@@ -33,6 +33,7 @@ import com.pdm.vczap_o.R
 import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
 import com.pdm.vczap_o.navigation.AuthScreen
 import com.pdm.vczap_o.navigation.MainScreen
+import com.pdm.vczap_o.navigation.LoadingScreen
 import kotlinx.coroutines.delay
 
 @Composable
@@ -51,6 +52,7 @@ fun LoadingScreen(navController: NavHostController, authViewModel: AuthViewModel
         if (authState) {
             navController.navigate(MainScreen(0)) {
                 popUpTo(LoadingScreen) { inclusive = true }
+
             }
         } else {
             navController.navigate(AuthScreen) {
