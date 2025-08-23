@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+
+    <color name="toolbar_color">#6650a4</color>
+    <color name="status_bar_color">#000000</color>
+    <color name="toolbar_widget_color">#FFFFFF</color>
+    <color name="active_widget_color">#6650a4</color>
+</resources>

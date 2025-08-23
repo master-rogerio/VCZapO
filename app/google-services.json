@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "882700073778",
+    "project_id": "vc-zapo",
+    "storage_bucket": "vc-zapo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882700073778:android:b284e58a62e4dfc1e1352b",
+        "android_client_info": {
+          "package_name": "com.pdm.vczap_o"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBL3_s-ES9rRh4KjjbJhKKUUYwO20BpZIY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
