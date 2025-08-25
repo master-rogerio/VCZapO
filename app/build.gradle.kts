@@ -122,6 +122,15 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
 
+    //Signal Procol
+    implementation("org.whispersystems:signal-protocol-android:2.8.1")
+
+    //Security
+    implementation("androidx.security:security-crypto:1.1.0")
+
+    //Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
+
     // Default libs
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

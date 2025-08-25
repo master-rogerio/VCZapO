@@ -77,4 +77,18 @@ class AuthRepository @Inject constructor(
     fun logout() {
         auth.signOut()
     }
+
+//cripto
+    suspend fun publishUserKeys(userId: String, identityKey: String, registrationId: Int, preKeys: List<Map<String, Any>>, signedPreKey: Map<String, Any>) {
+        val userKeys = hashMapOf(
+            "identityKey" to identityKey,
+            "registrationId" to registrationId,
+            "preKeys" to preKeys,
+            "signedPreKey" to signedPreKey
+        )
+        //Trocado firestore por firebase
+        firebase.collection("users").document(userId).collection("keys").document("publicKeys")
+            .set(userKeys)
+            .await()
+    }
 }

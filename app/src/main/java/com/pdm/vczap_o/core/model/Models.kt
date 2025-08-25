@@ -44,13 +44,15 @@ data class ChatMessage(
     var delivered: Boolean = false,
     var location: Location? = null,
     var duration: Long? = null,
-    var reactions: MutableMap<String, String> = mutableMapOf()
+    var reactions: MutableMap<String, String> = mutableMapOf(),
+    val encryptionType: Int? = null
 )
 
 data class Location(
     var latitude: Double = 0.0,
     var longitude: Double = 0.0
 )
+
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 

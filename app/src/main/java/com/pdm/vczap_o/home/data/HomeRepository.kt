@@ -1,12 +1,14 @@
 package com.pdm.vczap_o.home.data
 
 import android.util.Log
-import com.pdm.vczap_o.core.domain.logger
 import com.google.firebase.firestore.Filter
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.messaging.FirebaseMessaging
+import com.pdm.vczap_o.core.domain.logger
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
+
 
 class HomeRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
@@ -42,5 +44,24 @@ class HomeRepository @Inject constructor(
                 callBack(task.result)
                 Log.d(tag, "FCM Token: ${task.result}")
             }
+    }
+
+    // ▼▼▼ MÉTODO ADICIONADO PARA A CRIPTOGRAFIA ▼▼▼
+    /**
+     * Busca o "pacote de chaves públicas" de um usuário no Firestore.
+     * Essas chaves são necessárias para iniciar uma sessão de chat segura.
+     * @param userId O ID do usuário cujas chaves serão buscadas.
+     * @return Um Map com os dados das chaves ou nulo se ocorrer um erro.
+     */
+    suspend fun getUserKeys(userId: String): Map<String, Any>? {
+        return try {
+            val document = firestore.collection("users").document(userId)
+                .collection("keys").document("publicKeys")
+                .get().await()
+            document.data
+        } catch (e: Exception) {
+            logger(tag, "Erro ao buscar chaves do usuário: ${e.message}")
+            null
+        }
     }
 }

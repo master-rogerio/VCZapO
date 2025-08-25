@@ -16,7 +16,16 @@ class SendTextMessageUseCase @Inject constructor(
         otherUserId: String,
         profileUrl: String,
     ) {
-        sendMessageRepository.sendTextMessage(roomId, content, senderId, senderName)
+        // ▼▼▼ CORREÇÃO APLICADA AQUI ▼▼▼
+        // Adicionamos o parâmetro 'otherUserId' que estava faltando na chamada.
+        sendMessageRepository.sendTextMessage(
+            roomId = roomId,
+            content = content,
+            senderId = senderId,
+            senderName = senderName,
+            otherUserId = otherUserId
+        )
+
         notificationUseCase(
             recipientsToken = recipientsToken,
             title = senderName,
