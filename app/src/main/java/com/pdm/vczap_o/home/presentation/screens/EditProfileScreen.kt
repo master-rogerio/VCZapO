@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -88,11 +91,23 @@ fun EditProfileScreen(
         }
     }
 
+    // controlador do teclado e o gerenciador de foco
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
+            // O modifier 'clickable' para detectar toques na tela
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null // Remove o efeito visual do clique
+            ) {
+                keyboardController?.hide() // Esconde o teclado
+                focusManager.clearFocus()  // Remove o foco do campo de texto
+            }
             .padding(top = 20.dp)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.Top,
@@ -107,14 +122,14 @@ fun EditProfileScreen(
             tint = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = "Edit Profile",
+            text = "Edite o seu Perfil",
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Update your username and/or profile picture",
+            text = "Atualize o seu Nome de Usuário e/ou Imagem de Perfil",
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -126,7 +141,7 @@ fun EditProfileScreen(
         Box(modifier = Modifier.clickable { imagePickerLauncher.launch("image/*") }) {
             AsyncImage(
                 model = if (profileUri != null) profileUri else userData?.profileUrl,
-                contentDescription = "Selected image",
+                contentDescription = "Selecione a Imagem",
                 modifier = Modifier
                     .clip(CircleShape)
                     .size(200.dp)
@@ -138,7 +153,7 @@ fun EditProfileScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Choose a profile picture",
+            text = "Altere Aqui a sua Imagem de Perfil",
             modifier = Modifier.clickable { imagePickerLauncher.launch("image/*") },
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -152,6 +167,7 @@ fun EditProfileScreen(
                 keyboardType = KeyboardType.Text,
                 capitalization = KeyboardCapitalization.Sentences
             ),
+            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.LightGray, shape = MaterialTheme.shapes.medium)
@@ -165,7 +181,7 @@ fun EditProfileScreen(
                         .padding(horizontal = 10.dp)
                 ) {
                     if (username.isEmpty()) {
-                        Text(text = "Username", color = Color.Gray)
+                        Text(text = "Nome de Usuário", color = Color.Gray)
                     }
                     innerTextField()
                 }
@@ -176,7 +192,7 @@ fun EditProfileScreen(
         // Save Button
         Button(onClick = {
             if (username.isBlank() && profileUri == null) {
-                showToast(context, "Please update at least one field")
+                showToast(context, "Atualize pelo menos um campo.")
                 return@Button
             }
             isLoading = true
@@ -200,13 +216,13 @@ fun EditProfileScreen(
                     // Update Firestore document if there is at least one field to update.
                     if (newData.isNotEmpty()) {
                         authViewModel.updateUserDocument(newData)
-                        showToast(context, "Profile updated successfully!")
+                        showToast(context, "Imagem de Perfil atualizado com sucesso!")
                         authViewModel.loadUserData()
                     } else {
-                        showToast(context, "No updates provided")
+                        showToast(context, "Nenhum dado foi atualizado")
                     }
                 } catch (e: Exception) {
-                    showToast(context, "Error: ${e.message}", true)
+                    showToast(context, "Erro: ${e.message}", true)
                 } finally {
                     isLoading = false
                 }
@@ -217,7 +233,7 @@ fun EditProfileScreen(
                     color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(24.dp)
                 )
             } else {
-                Text("Save", fontSize = 18.sp)
+                Text("Salve", fontSize = 18.sp)
             }
         }
     }

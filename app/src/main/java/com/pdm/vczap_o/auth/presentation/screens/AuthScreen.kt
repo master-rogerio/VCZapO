@@ -1,6 +1,8 @@
 package com.pdm.vczap_o.auth.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +23,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,6 +46,7 @@ import com.pdm.vczap_o.navigation.AuthScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SetUserDetailsDC
 
+@OptIn(ExperimentalComposeUiApi::class) // Adicionado para usar o KeyboardController
 @Composable
 fun AuthScreen(
     navController: NavController, authViewModel: AuthViewModel
@@ -50,6 +56,10 @@ fun AuthScreen(
     val authState by authViewModel.authState.collectAsState()
     val message by authViewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    // Controlador do teclado e o gerenciador de foco
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(authState) {
         if (authState) {
@@ -77,7 +87,15 @@ fun AuthScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            //Modificação para abaixar o teclado
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+        indication = null // Remove o efeito visual do clique
+        ) {
+            keyboardController?.hide() // Esconde o teclado
+            focusManager.clearFocus()  // Remove o foco do campo de texto
+        },
         contentAlignment = Alignment.Center
     ) {
         Column(
