@@ -2,10 +2,14 @@ package com.pdm.vczap_o.auth.presentation.viewmodels
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.auth.api.identity.Identity
 import com.pdm.vczap_o.auth.data.AuthRepository
+import com.pdm.vczap_o.auth.data.BiometricAuthenticator
+import com.pdm.vczap_o.auth.data.GoogleAuthUiClient
 import com.pdm.vczap_o.auth.domain.GetUserDataUseCase
 import com.pdm.vczap_o.auth.domain.GetUserIdUseCase
 import com.pdm.vczap_o.auth.domain.IsUserLoggedInUseCase
@@ -29,12 +33,13 @@ class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val resetPasswordUseCase: ResetPasswordUseCase,
     private val updateUserDocumentUseCase: UpdateUserDocumentUseCase,
-    isUserLoggedInUseCase: IsUserLoggedInUseCase,
     private val getUserIdUseCase: GetUserIdUseCase,
     private val logoutUseCase: LogoutUseCase,
     private val getUserDataUseCase: GetUserDataUseCase,
     private val authRepository: AuthRepository, // Dependência para criptografia
     private val application: Application,      // Dependência para criptografia
+    private val isUserLoggedInUseCase: IsUserLoggedInUseCase,
+
     context: Context,
 ) : ViewModel() {
     private val cacheHelper = RoomsCache(context = context)
@@ -44,6 +49,33 @@ class AuthViewModel @Inject constructor(
     val authState: StateFlow<Boolean> = _authState
     val isLoggingIn: StateFlow<Boolean> = _isLoggingIn
     val message: StateFlow<String?> = _message
+
+    // --- INÍCIO DA LÓGICA DO GOOGLE SIGN-IN ---
+    private val oneTapClient = Identity.getSignInClient(context)
+    val googleAuthUiClient = GoogleAuthUiClient(context, oneTapClient)
+
+    fun onGoogleSignInResult(intent: Intent) {
+        _isLoggingIn.value = true
+        viewModelScope.launch {
+            val idToken = googleAuthUiClient.signInWithIntent(intent)
+            if (idToken != null) {
+                val result = authRepository.signInWithGoogle(idToken)
+                result.onSuccess {
+                    _authState.value = true
+                    _message.value = "Login com Google bem-sucedido!"
+                    _isLoggingIn.value = false
+                    generateAndPublishKeys()
+                }.onFailure {
+                    _message.value = it.message
+                    _isLoggingIn.value = false
+                }
+            } else {
+                _message.value = "Falha no login com Google."
+                _isLoggingIn.value = false
+            }
+        }
+    }
+
 
     fun signUp(email: String, password: String) {
         _isLoggingIn.value = true
@@ -164,6 +196,10 @@ class AuthViewModel @Inject constructor(
                 _message.value = "Falha ao configurar chaves de segurança: ${e.message}"
             }
         }
+    }
+
+    fun isUserLoggedIn(): Boolean {
+        return isUserLoggedInUseCase()
     }
 }
 

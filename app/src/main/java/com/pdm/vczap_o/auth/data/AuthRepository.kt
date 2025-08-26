@@ -2,6 +2,7 @@ package com.pdm.vczap_o.auth.data
 
 import com.pdm.vczap_o.core.model.NewUser
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -52,6 +53,17 @@ class AuthRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    suspend fun signInWithGoogle(idToken: String): Result<String> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            Result.success(result.user?.uid ?: "")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 
     suspend fun resetPassword(email: String): Result<String> {
         return try {

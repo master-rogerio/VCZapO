@@ -131,6 +131,12 @@ dependencies {
     //Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
+    //autenticação do Google Play Services
+    implementation("com.google.android.gms:play-services-auth:21.1.0")
+
+    // Biblioteca Biometria
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
     // Default libs
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
