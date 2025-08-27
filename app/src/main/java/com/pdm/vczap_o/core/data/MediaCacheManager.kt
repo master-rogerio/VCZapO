@@ -33,6 +33,7 @@ object MediaCacheManager {
         return file
     }
 
+    /*
     suspend fun getMediaUri(context: Context, url: String): Uri {
         val file = getFileForUrl(context, url)
         if (file.exists()) {
@@ -57,6 +58,38 @@ object MediaCacheManager {
             } catch (e: Exception) {
                 Log.e(TAG, "Download failed for URL: $url with error: ${e.localizedMessage}", e)
                 url.toUri()
+            }
+        }
+    }
+     */
+
+    suspend fun getMediaUri(context: Context, url: String?): Uri? {
+        // 1. VERIFICA SE O URL É INVÁLIDO (NULO OU VAZIO)
+        if (url.isNullOrBlank()) {
+            Log.d(TAG, "URL de mídia inválida ou nula. A ignorar.")
+            return null // Retorna nulo para evitar o crash
+        }
+
+        val file = getFileForUrl(context, url)
+        if (file.exists()) {
+            Log.d(TAG, "Ficheiro existe no cache: ${file.absolutePath}. A usar a versão em cache.")
+            return Uri.fromFile(file)
+        } else {
+            Log.d(TAG, "Ficheiro não existe no cache. A iniciar download para a URL: $url")
+            return try {
+                withContext(Dispatchers.IO) {
+                    downloadFile(url, file)
+                    evictCacheIfNeeded(getCacheDir(context))
+                }
+                if (file.exists()) {
+                    Uri.fromFile(file)
+                } else {
+                    Log.d(TAG, "Download concluído mas o ficheiro não foi encontrado. A usar o URL original.")
+                    url.toUri()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Download falhou para a URL: $url com o erro: ${e.localizedMessage}", e)
+                url.toUri() // Em caso de falha, tenta usar o URL original
             }
         }
     }

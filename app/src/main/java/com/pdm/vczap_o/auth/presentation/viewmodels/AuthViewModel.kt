@@ -4,9 +4,12 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.util.Base64
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import com.pdm.vczap_o.auth.data.AuthRepository
 import com.pdm.vczap_o.auth.data.BiometricAuthenticator
 import com.pdm.vczap_o.auth.data.GoogleAuthUiClient
@@ -18,13 +21,17 @@ import com.pdm.vczap_o.auth.domain.LogoutUseCase
 import com.pdm.vczap_o.auth.domain.ResetPasswordUseCase
 import com.pdm.vczap_o.auth.domain.SignUpUseCase
 import com.pdm.vczap_o.auth.domain.UpdateUserDocumentUseCase
+import com.pdm.vczap_o.core.model.NewUser
 import com.pdm.vczap_o.core.state.CurrentUser
 import com.pdm.vczap_o.cripto.SignalProtocolManager
 import com.pdm.vczap_o.home.data.RoomsCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,13 +53,26 @@ class AuthViewModel @Inject constructor(
     private val _authState = MutableStateFlow(isUserLoggedInUseCase())
     private val _isLoggingIn = MutableStateFlow(false)
     private val _message = MutableStateFlow<String?>(null)
+
+    private val _keyGenerationState = MutableStateFlow<KeyGenerationState>(KeyGenerationState.Idle)
+
     val authState: StateFlow<Boolean> = _authState
     val isLoggingIn: StateFlow<Boolean> = _isLoggingIn
     val message: StateFlow<String?> = _message
 
+    val keyGenerationState: StateFlow<KeyGenerationState> = _keyGenerationState
+
     // --- INÍCIO DA LÓGICA DO GOOGLE SIGN-IN ---
     private val oneTapClient = Identity.getSignInClient(context)
     val googleAuthUiClient = GoogleAuthUiClient(context, oneTapClient)
+
+    sealed class KeyGenerationState {
+        object Idle : KeyGenerationState()
+        object Generating : KeyGenerationState()
+        data class Success(val userId: String) : KeyGenerationState()
+        data class Error(val message: String) : KeyGenerationState()
+    }
+
 
     fun onGoogleSignInResult(intent: Intent) {
         _isLoggingIn.value = true
@@ -64,7 +84,7 @@ class AuthViewModel @Inject constructor(
                     _authState.value = true
                     _message.value = "Login com Google bem-sucedido!"
                     _isLoggingIn.value = false
-                    generateAndPublishKeys()
+                    generateAndPublishKeys() // Chamar a lógica de chaves
                 }.onFailure {
                     _message.value = it.message
                     _isLoggingIn.value = false
@@ -158,6 +178,7 @@ class AuthViewModel @Inject constructor(
     fun logout() {
         logoutUseCase()
         _authState.value = false
+        _keyGenerationState.value = KeyGenerationState.Idle
         cacheHelper.clearRooms()
     }
 
@@ -165,35 +186,68 @@ class AuthViewModel @Inject constructor(
         _message.value = null
     }
 
+
     // --- LÓGICA DE CRIPTOGRAFIA INTEGRADA ---
     private fun generateAndPublishKeys() {
         viewModelScope.launch {
             try {
-                val userId = getUserIdUseCase() ?: return@launch
-                val signalManager = SignalProtocolManager(application, userId)
-
-                // Só inicializa e publica as chaves se elas AINDA NÃO existirem
-                if (!signalManager.isInitialized()) {
-                    signalManager.initializeKeys()
-
-                    // Formata as chaves para salvar no Firestore
-                    val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP)
-                    val registrationId = signalManager.getRegistrationId()
-                    val preKeys = signalManager.getPreKeysForPublication().map {
-                        mapOf("keyId" to it.id, "publicKey" to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP))
-                    }
-                    val signedPreKeyRecord = signalManager.getSignedPreKeyForPublication()
-                    val signedPreKey = mapOf(
-                        "keyId" to signedPreKeyRecord.id,
-                        "publicKey" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),
-                        "signature" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)
-                    )
-
-                    // Chama a função do repositório para publicar as chaves
-                    authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey)
+                val userId = getUserIdUseCase()
+                if (userId.isNullOrBlank()) {
+                    _message.value = "Erro: ID de utilizador inválido para gerar chaves."
+                    return@launch
                 }
+
+                // Verifica se as chaves já existem para evitar trabalho desnecessário
+                if (authRepository.checkIfKeysExist(userId)) {
+                    Log.d("AuthViewModel", "Chaves de segurança já existem para o utilizador $userId.")
+                    return@launch
+                }
+
+                // Garante que o perfil do utilizador exista
+                val userProfileResult = getUserDataUseCase(userId)
+                if (userProfileResult.isFailure || userProfileResult.getOrNull() == null) {
+                    val firebaseUser = Firebase.auth.currentUser
+                    val newUser = NewUser(
+                        userId = userId,
+                        username = firebaseUser?.displayName ?: "Utilizador",
+                        profileUrl = firebaseUser?.photoUrl?.toString() ?: "",
+                        deviceToken = "",
+                        email = firebaseUser?.email ?: ""
+                    )
+                    authRepository.saveUserProfile(newUser).onFailure {
+                        _message.value = "Falha ao guardar perfil inicial do utilizador: ${it.message}"
+                        return@launch
+                    }
+                }
+
+                val signalManager = SignalProtocolManager(application, userId)
+                signalManager.initializeKeys()
+
+                val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP)
+                val registrationId = signalManager.getRegistrationId()
+                val preKeys = signalManager.getPreKeysForPublication().map {
+                    mapOf(
+                        "keyId" to it.id,
+                        "publicKey" to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP)
+                    )
+                }
+                val signedPreKeyRecord = signalManager.getSignedPreKeyForPublication()
+                val signedPreKey = mapOf(
+                    "keyId" to signedPreKeyRecord.id,
+                    "publicKey" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),
+                    "signature" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)
+                )
+
+                authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey)
+                    .onSuccess {
+                        Log.d("AuthViewModel", "Chaves de segurança publicadas com sucesso para o utilizador $userId.")
+                    }
+                    .onFailure { error ->
+                        _message.value = "Falha ao publicar chaves: ${error.message}"
+                    }
+
             } catch (e: Exception) {
-                _message.value = "Falha ao configurar chaves de segurança: ${e.message}"
+                _message.value = "Falha crítica nas chaves de segurança: ${e.javaClass.simpleName} - ${e.message}"
             }
         }
     }

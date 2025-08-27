@@ -3,6 +3,7 @@ package com.pdm.vczap_o.auth.data
 import com.pdm.vczap_o.core.model.NewUser
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -91,6 +92,48 @@ class AuthRepository @Inject constructor(
     }
 
 //cripto
+
+    /**
+     * Verifica se as chaves já existem no servidor
+     * Evita gerar chaves desnecessariamente
+     */
+    suspend fun checkIfKeysExist(userId: String): Boolean {
+        return try {
+            val document = firebase.collection("userKeys").document(userId).get().await()
+            document.exists() && document.get("identityKey") != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+
+    suspend fun publishUserKeys(
+        userId: String,
+        identityKey: String,
+        registrationId: Int,
+        preKeys: List<Map<String, Any>>,
+        signedPreKey: Map<String, Any>
+    ): Result<Unit> {
+        return try {
+            val keysData = hashMapOf(
+                "identityKey" to identityKey,
+                "registrationId" to registrationId,
+                "preKeys" to preKeys,
+                "signedPreKey" to signedPreKey,
+                "timestamp" to FieldValue.serverTimestamp()
+            )
+            firebase.collection("userKeys").document(userId)
+                .set(keysData)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+
+/*
     suspend fun publishUserKeys(userId: String, identityKey: String, registrationId: Int, preKeys: List<Map<String, Any>>, signedPreKey: Map<String, Any>) {
         val userKeys = hashMapOf(
             "identityKey" to identityKey,
@@ -103,4 +146,4 @@ class AuthRepository @Inject constructor(
             .set(userKeys)
             .await()
     }
-}
+    */

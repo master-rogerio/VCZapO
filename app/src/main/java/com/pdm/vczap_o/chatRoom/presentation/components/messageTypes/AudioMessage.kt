@@ -1,5 +1,6 @@
 package com.pdm.vczap_o.chatRoom.presentation.components.messageTypes
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,7 +45,8 @@ fun AudioMessage(message: ChatMessage, isFromMe: Boolean, fontSize: Int) {
     val tag = "AudioMessage"
     val context = LocalContext.current
     // Original URL as fallback
-    var mediaUri by remember { mutableStateOf(message.audio?.toUri() ?: "".toUri()) }
+   // var mediaUri by remember { mutableStateOf(message.audio?.toUri() ?: "".toUri()) }
+    var mediaUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(message.audio) {
         val cachedUri = MediaCacheManager.getMediaUri(context, message.audio.toString())
@@ -53,11 +55,19 @@ fun AudioMessage(message: ChatMessage, isFromMe: Boolean, fontSize: Int) {
     }
 
     val exoPlayer = remember { ExoPlayer.Builder(context).build() }
-
+/*
     LaunchedEffect(mediaUri) {
         Log.d(tag, "Updating ExoPlayer with new mediaUri: $mediaUri")
         exoPlayer.setMediaItem(MediaItem.fromUri(mediaUri))
         exoPlayer.prepare()
+    }*/
+
+    LaunchedEffect(mediaUri) {
+        mediaUri?.let { uri ->
+            Log.d(tag, "Updating ExoPlayer with new mediaUri: $uri")
+            exoPlayer.setMediaItem(MediaItem.fromUri(uri))
+            exoPlayer.prepare()
+        }
     }
 
     var isPlaying by remember { mutableStateOf(false) }
@@ -110,7 +120,9 @@ fun AudioMessage(message: ChatMessage, isFromMe: Boolean, fontSize: Int) {
             .height(60.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = {
+            IconButton(
+                enabled = mediaUri != null, // Desativa o botão se não houver áudio
+                onClick = {
                 if (isPlaying) {
                     exoPlayer.pause()
                 } else {

@@ -1,5 +1,6 @@
 package com.pdm.vczap_o.chatRoom.presentation.components.messageTypes
 
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -20,10 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
+import com.pdm.vczap_o.R
 import com.pdm.vczap_o.chatRoom.presentation.components.FullScreenImageViewer
 import com.pdm.vczap_o.chatRoom.presentation.utils.vibrateDevice
 import com.pdm.vczap_o.core.data.MediaCacheManager
@@ -37,7 +40,7 @@ fun ImageMessage(
     var isExpanded by remember { mutableStateOf(false) }
     message.image?.let { imageUrl ->
         val context = LocalContext.current
-        var mediaUri by remember { mutableStateOf(imageUrl.toUri()) }
+        var mediaUri by remember { mutableStateOf<Uri?>(null) }
 
         LaunchedEffect(imageUrl) {
             val cachedUri = MediaCacheManager.getMediaUri(context, imageUrl)
@@ -47,7 +50,11 @@ fun ImageMessage(
 
         Column {
             AsyncImage(
-                model = mediaUri, contentDescription = "Image message", modifier = Modifier
+                model = mediaUri ?: imageUrl,
+                fallback = painterResource(id = R.drawable.person), // Placeholder
+                error = painterResource(id = R.drawable.person), // Imagem de erro
+                contentDescription = "Image message",
+                modifier = Modifier
                     .heightIn(min = 30.dp, max = 250.dp)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)
@@ -57,7 +64,12 @@ fun ImageMessage(
                         detectTapGestures(onLongPress = {
                             vibrateDevice(context)
                             showPopUp()
-                        }, onTap = { isExpanded = true })
+                        }, onTap = {
+                            // Só permite expandir a imagem se o URI não for nulo
+                            if (mediaUri != null || imageUrl.isNotBlank()) {
+                                isExpanded = true
+                            }
+                        })
                     },
                 contentScale = ContentScale.FillWidth
             )
@@ -77,8 +89,10 @@ fun ImageMessage(
                 )
             }
             if (isExpanded) {
+                // Garante que não seja um valor nulo para o visualizador de imagem
+                val imageToShow = (mediaUri ?: imageUrl.toUri()).toString()
                 FullScreenImageViewer(
-                    imageUri = mediaUri.toString(),
+                    imageUri = imageToShow,
                     onDismiss = { isExpanded = false },
                 )
             }

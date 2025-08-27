@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -19,7 +18,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -53,7 +51,7 @@ fun AuthScreen(
     val authState by authViewModel.authState.collectAsState()
     val message by authViewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope() // CORREÇÃO: Obter o CoroutineScope
+    val scope = rememberCoroutineScope()
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -61,7 +59,7 @@ fun AuthScreen(
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
         onResult = { result ->
-            if (result.resultCode == Activity.RESULT_OK) { // CORREÇÃO: Usar Activity.RESULT_OK
+            if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.let { intent ->
                     authViewModel.onGoogleSignInResult(intent)
                 }
@@ -69,16 +67,16 @@ fun AuthScreen(
         }
     )
 
-    // CORREÇÃO: Obter a FragmentActivity do contexto de forma segura.
+
     val activity = LocalContext.current as? FragmentActivity
     val biometricAuthenticator = remember(activity) {
         activity?.let { BiometricAuthenticator(it) }
     }
     var showBiometricPrompt by remember { mutableStateOf(false) }
 
-    // CORREÇÃO: Verificar se o usuário já está logado para mostrar a biometria
+    // Verifica se o usuário já está logado para mostrar a biometria
     LaunchedEffect(key1 = Unit) {
-        if (authViewModel.isUserLoggedIn()) { // CORREÇÃO: Chamar o método correto
+        if (authViewModel.isUserLoggedIn()) {
             if (biometricAuthenticator?.isBiometricAvailable() == BiometricAuthStatus.READY) {
                 showBiometricPrompt = true
             }
