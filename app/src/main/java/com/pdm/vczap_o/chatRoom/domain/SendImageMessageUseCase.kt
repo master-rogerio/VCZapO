@@ -17,7 +17,7 @@ class SendImageMessageUseCase @Inject constructor(
         profileUrl: String,
         recipientsToken: String,
     ) {
-        sendMessageRepository.sendImageMessage(roomId, caption, imageUrl, senderId, senderName)
+        sendMessageRepository.sendImageMessage(roomId, caption, senderId, senderName, imageUrl, otherUserId)
         notificationUseCase(
             recipientsToken = recipientsToken,
             title = senderName,

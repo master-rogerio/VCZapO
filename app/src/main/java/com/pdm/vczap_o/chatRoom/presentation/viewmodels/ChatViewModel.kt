@@ -125,7 +125,8 @@ class ChatViewModel @Inject constructor(
                             !it.read && it.senderId != userId
                         }
                         if (unreadMessages.isNotEmpty()) {
-                            markMessagesAsReadUseCase(roomId, userId, unreadMessages)
+                            val messageIds = unreadMessages.map { it.id }
+                            markMessagesAsReadUseCase(roomId, messageIds)
                         }
                     }
                 }

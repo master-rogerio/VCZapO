@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import com.pdm.vczap_o.chatRoom.data.local.ChatDatabase
 import com.pdm.vczap_o.chatRoom.data.local.MessageDao
 import com.pdm.vczap_o.core.data.dataStore
+import com.pdm.vczap_o.cripto.CryptoService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -53,6 +54,11 @@ object AppModule {
     @Singleton
     fun provideDataStore(@ApplicationContext appContext: Context): DataStore<Preferences> {
         return appContext.applicationContext.dataStore
+    }
 
+    @Provides
+    @Singleton
+    fun provideCryptoService(@ApplicationContext appContext: Context): CryptoService {
+        return CryptoService(appContext)
     }
 }

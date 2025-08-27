@@ -15,13 +15,12 @@ class UpdateMessageUseCase @Inject constructor(
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit,
     ) {
-        messageRepository.updateMessage(
-            roomId,
-            messageId,
-            newContent,
-            onSuccess,
-            onFailure,
-            context
-        )
+        try {
+            val updates = mapOf("content" to newContent)
+            messageRepository.updateMessage(roomId, messageId, updates)
+            onSuccess()
+        } catch (e: Exception) {
+            onFailure(e)
+        }
     }
 }

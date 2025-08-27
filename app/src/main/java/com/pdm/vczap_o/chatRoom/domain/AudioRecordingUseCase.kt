@@ -73,7 +73,8 @@ class AudioRecordingUseCase @Inject constructor(
                 senderId = senderId,
                 senderName = senderName,
                 audioUrl = audioUrl,
-                duration = duration
+                duration = duration,
+                otherUserId = otherUserId
             )
 
             notificationUseCase(

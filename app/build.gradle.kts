@@ -101,10 +101,18 @@ dependencies {
 
     // Firebase libs
     implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
-    implementation(libs.firebase.storage.ktx)
-    implementation(libs.firebase.messaging.ktx)
+    implementation(libs.firebase.auth.ktx) {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
+    implementation(libs.firebase.firestore.ktx) {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
+    implementation(libs.firebase.storage.ktx) {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
+    implementation(libs.firebase.messaging.ktx) {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
 
     // Navigation lib
     implementation(libs.androidx.navigation.compose)
@@ -122,8 +130,14 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
 
-    //Signal Procol
-    implementation("org.whispersystems:signal-protocol-android:2.8.1")
+    //Signal Protocol - Updated version for better compatibility
+    implementation("org.whispersystems:signal-protocol-android:2.8.1") {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+        exclude(group = "com.google.protobuf", module = "protobuf-java")
+    }
+    
+    // Force specific protobuf version that's compatible with Signal Protocol 2.8.1
+    implementation("com.google.protobuf:protobuf-javalite:3.18.3")
 
     //Security
     implementation("androidx.security:security-crypto:1.1.0")
@@ -148,4 +162,16 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+// Force protobuf version resolution
+configurations.all {
+    resolutionStrategy {
+        eachDependency {
+            if (requested.group == "com.google.protobuf" && requested.name == "protobuf-javalite") {
+                useVersion("3.18.3")
+                because("Force protobuf version compatible with Signal Protocol")
+            }
+        }
+    }
 }

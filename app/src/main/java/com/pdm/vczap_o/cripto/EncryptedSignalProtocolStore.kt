@@ -125,6 +125,8 @@ class EncryptedSignalProtocolStore(context: Context, private val userId: String)
         // Lógica para remover sessões pode ser implementada aqui
     }
 
+
+
     override fun getSubDeviceSessions(name: String): MutableList<Int> {
         return mutableListOf()
     }
@@ -158,5 +160,71 @@ class EncryptedSignalProtocolStore(context: Context, private val userId: String)
         direction: IdentityKeyStore.Direction
     ): Boolean {
         return true
+    }
+    
+    /**
+     * Armazena uma pre-key customizada para contornar problemas de protobuf
+     */
+    fun storeCustomPreKey(keyId: Int, publicKeyBytes: ByteArray, privateKeyBytes: ByteArray) {
+        prefs.edit()
+            .putString("custom_prekey_public_$keyId", encode(publicKeyBytes))
+            .putString("custom_prekey_private_$keyId", encode(privateKeyBytes))
+            .putBoolean("custom_prekey_exists_$keyId", true)
+            .apply()
+    }
+    
+    /**
+     * Verifica se existe uma pre-key customizada
+     */
+    fun hasCustomPreKey(keyId: Int): Boolean {
+        return prefs.getBoolean("custom_prekey_exists_$keyId", false)
+    }
+    
+    /**
+     * Carrega uma pre-key customizada
+     */
+    fun loadCustomPreKey(keyId: Int): Pair<ByteArray, ByteArray>? {
+        if (!hasCustomPreKey(keyId)) return null
+        
+        val publicKeyBytes = prefs.getString("custom_prekey_public_$keyId", null)?.let { decode(it) }
+        val privateKeyBytes = prefs.getString("custom_prekey_private_$keyId", null)?.let { decode(it) }
+        
+        return if (publicKeyBytes != null && privateKeyBytes != null) {
+            Pair(publicKeyBytes, privateKeyBytes)
+        } else null
+    }
+    
+    /**
+     * Armazena uma sessão customizada para contornar problemas de protobuf
+     */
+    fun storeCustomSession(remoteUserId: String, sessionData: Map<String, Any>) {
+        val sessionJson = com.google.gson.Gson().toJson(sessionData)
+        prefs.edit()
+            .putString("custom_session_$remoteUserId", sessionJson)
+            .putBoolean("custom_session_exists_$remoteUserId", true)
+            .apply()
+    }
+    
+    /**
+     * Verifica se existe uma sessão customizada
+     */
+    fun hasCustomSession(remoteUserId: String): Boolean {
+        return prefs.getBoolean("custom_session_exists_$remoteUserId", false)
+    }
+    
+    /**
+     * Carrega uma sessão customizada
+     */
+    fun loadCustomSession(remoteUserId: String): Map<String, Any>? {
+        if (!hasCustomSession(remoteUserId)) return null
+        
+        val sessionJson = prefs.getString("custom_session_$remoteUserId", null)
+        return if (sessionJson != null) {
+            try {
+                com.google.gson.Gson().fromJson(sessionJson, Map::class.java) as? Map<String, Any>
+            } catch (e: Exception) {
+                null
+            }
+        } else null
     }
 }
