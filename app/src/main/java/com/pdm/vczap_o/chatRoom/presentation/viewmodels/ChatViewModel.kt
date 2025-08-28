@@ -257,18 +257,16 @@ class ChatViewModel @Inject constructor(
     fun addReactionToMessage(
         roomId: String,
         messageId: String,
+        reaction: String,
         userId: String,
-        emoji: String,
-        messageContent: String,
     ) {
         viewModelScope.launch {
             try {
                 addReactionUseCase(
                     roomId = roomId,
                     messageId = messageId,
+                    reaction = reaction,
                     userId = userId,
-                    emoji = emoji,
-                    messageContent = messageContent,
                 )
             } catch (e: Exception) {
                 logger(tag, "Error adding reaction: $e")

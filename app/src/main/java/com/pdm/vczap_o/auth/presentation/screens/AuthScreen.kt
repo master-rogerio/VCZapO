@@ -39,6 +39,8 @@ import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.navigation.AuthScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import kotlinx.coroutines.launch
+import com.pdm.vczap_o.LoadingScreen // A importação do teu ecrã de carregamento
+import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel.KeyGenerationState
 
 @SuppressLint("ContextCastToActivity")
 @OptIn(ExperimentalComposeUiApi::class)
@@ -55,6 +57,261 @@ fun AuthScreen(
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+
+    val keyState by authViewModel.keyGenerationState.collectAsStateWithLifecycle()
+
+    // Este `LaunchedEffect` reage ao estado das chaves para navegar ou mostrar erro
+    LaunchedEffect(keyState) {
+        when (val state = keyState) { // Usamos 'val state' para facilitar o acesso
+            is KeyGenerationState.Success -> {
+                // SÓ NAVEGA QUANDO AS CHAVES ESTÃO PRONTAS
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
+            }
+            is KeyGenerationState.Error -> {
+                // Mostra uma mensagem de erro se a criação de chaves falhar
+                showToast(context, "Erro de segurança: ${state.message}", long = true)
+            }
+            else -> {
+                // Idle ou Generating, não faz nada aqui, a UI tratará disso
+            }
+        }
+    }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+        onResult = { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.let { intent ->
+                    authViewModel.onGoogleSignInResult(intent)
+                }
+            }
+        }
+    )
+
+    val activity = LocalContext.current as? FragmentActivity
+    val biometricAuthenticator = remember(activity) {
+        activity?.let { BiometricAuthenticator(it) }
+    }
+    var showBiometricPrompt by remember { mutableStateOf(false) }
+
+    // Verifica se o usuário já está logado para mostrar a biometria
+    LaunchedEffect(key1 = Unit) {
+        if (authViewModel.isUserLoggedIn()) {
+            if (biometricAuthenticator?.isBiometricAvailable() == BiometricAuthStatus.READY) {
+                showBiometricPrompt = true
+            }
+        }
+    }
+
+    if (showBiometricPrompt && biometricAuthenticator != null) {
+        biometricAuthenticator.promptBiometricAuth(
+            title = "Login Biométrico",
+            subtitle = "Faça login usando sua biometria",
+            negativeButtonText = "Cancelar",
+            onSuccess = {
+                showBiometricPrompt = false
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
+            },
+            onError = { _, _ ->
+                showBiometricPrompt = false
+            },
+            onFailed = {
+                Toast.makeText(context, "Falha na autenticação", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
+
+    LaunchedEffect(message) {
+        message?.let {
+            showToast(context = context, message = it, long = false)
+            authViewModel.clearMessage()
+        }
+    }
+
+    // Usamos 'when' para decidir qual UI mostrar. É mais limpo que 'if/else'.
+    when {
+        // Mostra o ecrã de carregamento se estiver a autenticar e a gerar chaves
+        authState && (keyState is KeyGenerationState.Generating || keyState is KeyGenerationState.Idle) -> {
+            // CORREÇÃO: Passa os parâmetros necessários, resolvendo o erro atual
+            LoadingScreen(navController = navController, authViewModel = authViewModel)
+        }
+        // Caso contrário, mostra o formulário de login/registo normal
+        else -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Top,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val composition by rememberLottieComposition(
+                        LottieCompositionSpec.RawRes(R.raw.chatmessagewithphone)
+                    )
+                    val progress by animateLottieCompositionAsState(
+                        composition = composition,
+                        iterations = LottieConstants.IterateForever,
+                        speed = 1f
+                    )
+
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress },
+                        modifier = Modifier.size(350.dp).align(Alignment.CenterHorizontally)
+                    )
+
+                    Spacer(modifier = Modifier.height((-30).dp))
+
+                    Text(
+                        text = title,
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.align(Alignment.Start).padding(start = 50.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    AuthForm(
+                        isLogin = isLogin,
+                        onToggleMode = { isLogin = !isLogin },
+                        authViewModel = authViewModel
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                val signInIntentSender = authViewModel.googleAuthUiClient.signIn()
+                                googleSignInLauncher.launch(
+                                    IntentSenderRequest.Builder(
+                                        signInIntentSender ?: return@launch
+                                    ).build()
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.height(50.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_google),
+                            contentDescription = "Login com Google",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = "Faça login com o Google")
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+/*
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.airbnb.lottie.compose.*
+import com.pdm.vczap_o.R
+import com.pdm.vczap_o.auth.data.BiometricAuthenticator
+import com.pdm.vczap_o.auth.data.BiometricAuthStatus
+import com.pdm.vczap_o.auth.presentation.components.AuthForm
+import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
+import com.pdm.vczap_o.core.domain.showToast
+import com.pdm.vczap_o.navigation.AuthScreen
+import com.pdm.vczap_o.navigation.MainScreen
+import kotlinx.coroutines.launch
+import com.pdm.vczap_o.LoadingScreen // Adicione esta importação
+import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel.KeyGenerationState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+@SuppressLint("ContextCastToActivity")
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun AuthScreen(
+    navController: NavController, authViewModel: AuthViewModel
+) {
+    var isLogin by remember { mutableStateOf(true) }
+    val title = if (isLogin) "Login" else "Sign Up"
+    val authState by authViewModel.authState.collectAsState()
+    val message by authViewModel.message.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    //criptoMode
+    val keyState by authViewModel.keyGenerationState.collectAsStateWithLifecycle()
+
+    // Este `LaunchedEffect` agora reage ao estado das chaves
+    LaunchedEffect(keyState) {
+        when (keyState) {
+            is KeyGenerationState.Success -> {
+                // SÓ NAVEGA QUANDO AS CHAVES ESTÃO PRONTAS
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
+            }
+            is KeyGenerationState.Error -> {
+                // Mostra uma mensagem de erro se a criação de chaves falhar
+                val errorState = keyState as KeyGenerationState.Error
+                showToast(context, "Erro de segurança: ${errorState.message}", long = true)
+            }
+            else -> {
+                // Idle ou Generating, não faz nada aqui
+            }
+        }
+    }
+
+    //End Cripto MOde
+
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
@@ -102,7 +359,7 @@ fun AuthScreen(
             }
         )
     }
-
+/*
     LaunchedEffect(authState) {
         if (authState) {
             // A navegação aqui pode ser ajustada para o fluxo de usuário do Google
@@ -110,7 +367,7 @@ fun AuthScreen(
                 popUpTo(AuthScreen) { inclusive = true }
             }
         }
-    }
+    }*/
 
     LaunchedEffect(message) {
         message?.let {
@@ -119,86 +376,99 @@ fun AuthScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                keyboardController?.hide()
-                focusManager.clearFocus()
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val composition by rememberLottieComposition(
-                LottieCompositionSpec.RawRes(R.raw.chatmessagewithphone)
-            )
-            val progress by animateLottieCompositionAsState(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                speed = 1f
-            )
+    // Mostra o ecrã de carregamento se estiver a autenticar ou a gerar chaves
+    if (authState && (keyState is KeyGenerationState.Generating || keyState is KeyGenerationState.Idle)) {
+        LoadingScreen(loadingText = "A preparar sessão segura...")
+    } else {
 
-            LottieAnimation(composition = composition, progress = { progress }, modifier = Modifier.size(350.dp).align(Alignment.CenterHorizontally))
-
-            Spacer(modifier = Modifier.height((-30).dp))
-
-            Text(
-                text = title,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.Start).padding(start = 50.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            AuthForm(
-                isLogin = isLogin,
-                onToggleMode = { isLogin = !isLogin },
-                authViewModel = authViewModel
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = {
-                    scope.launch {
-                        val signInIntentSender = authViewModel.googleAuthUiClient.signIn()
-                        googleSignInLauncher.launch(
-                            IntentSenderRequest.Builder(
-                                signInIntentSender ?: return@launch
-                            ).build()
-                        )
-                    }
+        // Mostra o formulário de login/registo normal
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
                 },
-                shape = RoundedCornerShape(20.dp), // cantos levemente arredondados
-                modifier = Modifier
-                    .height(50.dp) // altura fixa
-                   // .fillMaxWidth() // ocupa toda a largura disponível
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top,
+                modifier = Modifier.fillMaxSize()
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_google),
-                    contentDescription = "Login com Google",
-                    tint = Color.Unspecified,
-                    modifier = Modifier.size(24.dp)
+                val composition by rememberLottieComposition(
+                    LottieCompositionSpec.RawRes(R.raw.chatmessagewithphone)
                 )
-                Spacer(modifier = Modifier.width(8.dp)) // espaço entre ícone e texto
-                Text(text = "Faça login com o Google")
+                val progress by animateLottieCompositionAsState(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    speed = 1f
+                )
+
+                LottieAnimation(
+                    composition = composition,
+                    progress = { progress },
+                    modifier = Modifier.size(350.dp).align(Alignment.CenterHorizontally)
+                )
+
+                Spacer(modifier = Modifier.height((-30).dp))
+
+                Text(
+                    text = title,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.align(Alignment.Start).padding(start = 50.dp)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AuthForm(
+                    isLogin = isLogin,
+                    onToggleMode = { isLogin = !isLogin },
+                    authViewModel = authViewModel
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = {
+                        scope.launch {
+                            val signInIntentSender = authViewModel.googleAuthUiClient.signIn()
+                            googleSignInLauncher.launch(
+                                IntentSenderRequest.Builder(
+                                    signInIntentSender ?: return@launch
+                                ).build()
+                            )
+                        }
+                    },
+                    shape = RoundedCornerShape(20.dp), // cantos levemente arredondados
+                    modifier = Modifier
+                        .height(50.dp) // altura fixa
+                    // .fillMaxWidth() // ocupa toda a largura disponível
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_google),
+                        contentDescription = "Login com Google",
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp)) // espaço entre ícone e texto
+                    Text(text = "Faça login com o Google")
+                }
             }
         }
     }
 }
+
+ */
 
 /*
 import android.widget.Toast

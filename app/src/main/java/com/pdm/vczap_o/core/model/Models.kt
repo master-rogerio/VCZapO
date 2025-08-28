@@ -26,8 +26,17 @@ data class NewUser(
     var username: String = "",
     var profileUrl: String = "",
     var deviceToken: String = "",
-    var email: String = ""
+    var email: String = "",
+
+    // --- CAMPOS NOVOS PARA A CRIPTOGRAFIA ---
+    val publicKey: String? = null,
+    val registrationId: Int? = null,
+    val preKeys: List<Map<String, Any>>? = null,
+    val signedPreKey: Map<String, Any>? = null
+
+
 ) : Serializable
+
 
 @Keep
 data class ChatMessage(

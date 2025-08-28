@@ -1,40 +1,58 @@
 package com.pdm.vczap_o.cripto
 
 import android.util.Base64
-import org.whispersystems.libsignal.IdentityKey
-import org.whispersystems.libsignal.ecc.Curve
-import org.whispersystems.libsignal.ecc.ECPublicKey
-import org.whispersystems.libsignal.state.PreKeyBundle
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
+import java.security.SecureRandom
 
 object CryptoUtils {
-    private fun decode(data: String): ByteArray = Base64.decode(data, Base64.DEFAULT)
+    // Métodos de criptografia AES
+    fun encryptWithAES(message: String, secretKey: SecretKey): String {
+        return try {
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val random = SecureRandom()
+            val iv = ByteArray(12)
+            random.nextBytes(iv)
+            
+            val gcmSpec = GCMParameterSpec(128, iv)
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec)
+            
+            val encryptedBytes = cipher.doFinal(message.toByteArray(Charsets.UTF_8))
+            val combined = iv + encryptedBytes
+            
+            Base64.encodeToString(combined, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            throw RuntimeException("Falha na criptografia AES: ${e.message}", e)
+        }
+    }
 
-    @Suppress("UNCHECKED_CAST")
-    fun parsePreKeyBundle(userKeys: Map<String, Any>): PreKeyBundle {
-        val registrationId = (userKeys["registrationId"] as Long).toInt()
-        val identityKey = IdentityKey(decode(userKeys["identityKey"] as String), 0)
+    fun decryptWithAES(encryptedMessage: String, secretKey: SecretKey): String {
+        return try {
+            val combined = Base64.decode(encryptedMessage, Base64.DEFAULT)
+            val iv = combined.copyOfRange(0, 12)
+            val encryptedBytes = combined.copyOfRange(12, combined.size)
+            
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            val gcmSpec = GCMParameterSpec(128, iv)
+            cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
+            
+            val decryptedBytes = cipher.doFinal(encryptedBytes)
+            String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            throw RuntimeException("Falha na decriptografia AES: ${e.message}", e)
+        }
+    }
 
-        val signedPreKeyData = userKeys["signedPreKey"] as Map<String, Any>
-        val signedPreKeyId = (signedPreKeyData["keyId"] as Long).toInt()
-        val signedPreKeyPublic = Curve.decodePoint(decode(signedPreKeyData["publicKey"] as String), 0)
-        val signature = decode(signedPreKeyData["signature"] as String)
+    fun generateAESKey(): SecretKey {
+        val keyGenerator = KeyGenerator.getInstance("AES")
+        keyGenerator.init(256)
+        return keyGenerator.generateKey()
+    }
 
-        val preKeysData = userKeys["preKeys"] as List<Map<String, Any>>
-        // O protocolo X3DH só precisa de UMA pre-key para iniciar a sessão. Vamos pegar a primeira.
-        val preKeyData = preKeysData.first()
-        val preKeyId = (preKeyData["keyId"] as Long).toInt()
-        val preKeyPublic = Curve.decodePoint(decode(preKeyData["publicKey"] as String), 0)
-
-
-        return PreKeyBundle(
-            registrationId,
-            1, // Device ID (fixo em 1 para simplificar)
-            preKeyId,
-            preKeyPublic,
-            signedPreKeyId,
-            signedPreKeyPublic,
-            signature,
-            identityKey
-        )
+    fun secretKeyFromBytes(keyBytes: ByteArray): SecretKey {
+        return SecretKeySpec(keyBytes, "AES")
     }
 }

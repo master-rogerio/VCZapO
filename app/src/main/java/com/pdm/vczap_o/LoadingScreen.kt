@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -36,8 +37,8 @@ import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.LoadingScreen
 import kotlinx.coroutines.delay
 
-@Composable
-fun LoadingScreen(navController: NavHostController, authViewModel: AuthViewModel) {
+@Composable //                  NavHostController
+fun LoadingScreen(navController: NavController, authViewModel: AuthViewModel) {
     val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.loading_animation))
     val progress by animateLottieCompositionAsState(
         composition = composition,

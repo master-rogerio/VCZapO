@@ -9,11 +9,9 @@ class AddReactionUseCase @Inject constructor(
     operator fun invoke(
         roomId: String,
         messageId: String,
+        reaction: String,
         userId: String,
-        emoji: String,
-        messageContent: String,
     ) {
-        sendMessageRepository.addReactionToMessage(roomId, messageId, userId, emoji, messageContent)
-
+        sendMessageRepository.addReactionToMessage(roomId, messageId, reaction, userId)
     }
 }

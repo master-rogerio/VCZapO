@@ -46,7 +46,7 @@ class HomeRepository @Inject constructor(
             }
     }
 
-    // ▼▼▼ MÉTODO ADICIONADO PARA A CRIPTOGRAFIA ▼▼▼
+    // ▼▼▼ MÉTODO CORRIGIDO PARA A CRIPTOGRAFIA ▼▼▼
     /**
      * Busca o "pacote de chaves públicas" de um usuário no Firestore.
      * Essas chaves são necessárias para iniciar uma sessão de chat segura.
@@ -55,10 +55,23 @@ class HomeRepository @Inject constructor(
      */
     suspend fun getUserKeys(userId: String): Map<String, Any>? {
         return try {
-            val document = firestore.collection("users").document(userId)
-                .collection("keys").document("publicKeys")
-                .get().await()
-            document.data
+            val document = firestore.collection("users").document(userId).get().await()
+            if (document.exists()) {
+                val data = document.data
+                // Verifica se o usuário tem as chaves necessárias
+                if (data?.containsKey("publicKey") == true && 
+                    data.containsKey("registrationId") == true &&
+                    data.containsKey("preKeys") == true &&
+                    data.containsKey("signedPreKey") == true) {
+                    data
+                } else {
+                    logger(tag, "Usuário $userId não possui todas as chaves necessárias")
+                    null
+                }
+            } else {
+                logger(tag, "Usuário $userId não encontrado")
+                null
+            }
         } catch (e: Exception) {
             logger(tag, "Erro ao buscar chaves do usuário: ${e.message}")
             null

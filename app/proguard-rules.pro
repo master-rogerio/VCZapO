@@ -19,3 +19,13 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+
+# proguard-rules.pro
+-keep class org.whispersystems.** { *; }
+-keep class com.google.protobuf.** { *; }
+-dontwarn org.whispersystems.**
+-dontwarn com.google.protobuf.**
+
+# Para evitar conflitos de duplicação
+-dontnote com.google.protobuf.**

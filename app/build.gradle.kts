@@ -1,4 +1,37 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.artifacts.DependencyResolveDetails
+
+/*
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "com.google.protobuf" &&
+            (requested.name == "protobuf-javalite" ||
+                    requested.name == "protobuf-kotlin-lite")
+        ) {
+            useVersion("3.21.12") // versão compatível com signal-protocol-android 2.8.1
+        }
+    }
+}*/
+
+configurations.all {
+    resolutionStrategy {
+        // Remove a força de versões conflitantes
+        force(
+            "com.google.protobuf:protobuf-javalite:3.21.12"
+        )
+
+        eachDependency {
+            when (requested.group) {
+                "com.google.protobuf" -> {
+                    if (requested.name == "protobuf-java" || requested.name == "protobuf-javalite") {
+                        useVersion("3.21.12")
+                        because("Force protobuf version for signal-protocol compatibility")
+                    }
+                }
+            }
+        }
+    }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -28,8 +61,16 @@ android {
     buildTypes {
         release {
             val boolean = false
-            isMinifyEnabled = boolean
-            isShrinkResources = boolean
+            isMinifyEnabled = true //boolean
+            isShrinkResources = true //boolean
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
+            isMinifyEnabled = false // Ativa mesmo no debug para testar
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -48,7 +89,18 @@ android {
     buildFeatures {
         compose = true
     }
+
+
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/*.version"
+            excludes += "**/*.proto"
+        }
+    }
 }
+
 
 dependencies {
     // CameraX
@@ -102,7 +154,9 @@ dependencies {
     // Firebase libs
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.firestore.ktx){
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
     implementation(libs.firebase.storage.ktx)
     implementation(libs.firebase.messaging.ktx)
 
@@ -122,8 +176,14 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
 
-    //Signal Procol
-    implementation("org.whispersystems:signal-protocol-android:2.8.1")
+    //Signal Protocol - Comentado devido a problemas de compatibilidade
+    //implementation("org.whispersystems:signal-protocol-android:2.16.1") {
+    //    exclude(group = "com.google.protobuf", module = "protobuf-java")
+    //}
+
+    // Versões específicas do protobuf
+    implementation("com.google.protobuf:protobuf-javalite:3.21.12")
+    //implementation("com.google.protobuf:protobuf-java:3.21.12")
 
     //Security
     implementation("androidx.security:security-crypto:1.1.0")

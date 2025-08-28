@@ -143,23 +143,8 @@ fun ChatMessageObject(
                             chatViewModel.addReactionToMessage(
                                 roomId = roomId,
                                 messageId = message.id,
+                                reaction = selectedEmoji,
                                 userId = if (isFromMe) currentUserId else message.senderId,
-                                emoji = selectedEmoji,
-                                messageContent = when (message.type) {
-                                    "image" -> {
-                                        "an image 📷"
-                                    }
-
-                                    "audio" -> {
-                                        "an audio  ${message.content}"
-                                    }
-
-                                    "location" -> {
-                                        "a location"
-                                    }
-
-                                    else -> "\"${message.content}\""
-                                }
                             )
                             showPopup = false
                         })
