@@ -43,9 +43,18 @@ fun ImageMessage(
         var mediaUri by remember { mutableStateOf<Uri?>(null) }
 
         LaunchedEffect(imageUrl) {
-            val cachedUri = MediaCacheManager.getMediaUri(context, imageUrl)
-            Log.d(tag, "Retrieved cached image URI: $cachedUri")
-            mediaUri = cachedUri
+            try {
+                // ALTERAÇÃO 28/08/2025 R - Carregamento robusto de imagem com fallback
+                val cachedUri = MediaCacheManager.getMediaUri(context, imageUrl)
+                mediaUri = cachedUri
+                Log.d(tag, "Imagem carregada do cache: $cachedUri")
+            } catch (e: Exception) {
+                // ALTERAÇÃO 28/08/2025 R - Fallback robusto para URL original
+                Log.w(tag, "Falha ao carregar imagem do cache: ${e.message}")
+                Log.w(tag, "Usando URL original como fallback: $imageUrl")
+                mediaUri = imageUrl.toUri()
+                // FIM ALTERAÇÃO 28/08/2025 R
+            }
         }
 
         Column {

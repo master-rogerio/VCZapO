@@ -38,6 +38,7 @@ import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.navigation.AuthScreen
 import com.pdm.vczap_o.navigation.MainScreen
+import com.pdm.vczap_o.navigation.SetUserDetailsDC
 import kotlinx.coroutines.launch
 
 @SuppressLint("ContextCastToActivity")
@@ -105,9 +106,15 @@ fun AuthScreen(
 
     LaunchedEffect(authState) {
         if (authState) {
-            // A navegação aqui pode ser ajustada para o fluxo de usuário do Google
-            navController.navigate(MainScreen(0)) {
-                popUpTo(AuthScreen) { inclusive = true }
+            if (isLogin) {
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
+            } else {
+                // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Redirecionamento para MainScreen
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
             }
         }
     }
@@ -326,9 +333,11 @@ fun AuthScreen(
                     popUpTo(AuthScreen) { inclusive = true }
                 }
             } else {
+                // ALTERAÇÃO 28/08/2025 R - Redirecionamento para criação de perfil após signup
                 navController.navigate(SetUserDetailsDC) {
                     popUpTo(AuthScreen) { inclusive = true }
                 }
+                // FIM ALTERAÇÃO 28/08/2025 R
             }
         }
     }

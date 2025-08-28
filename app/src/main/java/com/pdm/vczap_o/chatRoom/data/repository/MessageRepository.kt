@@ -119,32 +119,10 @@ class MessageRepository @Inject constructor(
                 }
             }
         } else {
-            // Para mensagens de outros usuários, decriptografa se necessário
+            // ALTERAÇÃO 28/08/2025 R - Decriptografia com tratamento robusto de erros
             if (content.isNotBlank() && encryptionType != null) {
                 try {
-                    Log.d(tag, "Tentando decriptografar mensagem de $senderId")
-
-                    val decodedContent = when (encryptionType) {
-                        1 -> {
-                            // Tipo 1: decodifica Base64
-                            try {
-                                Base64.decode(content, Base64.DEFAULT)
-                            } catch (e: Exception) {
-                                Log.e(tag, "Erro ao decodificar Base64: ${e.message}")
-                                content.toByteArray(Charsets.UTF_8)
-                            }
-                        }
-                        else -> {
-                            // Outros tipos: decodifica Base64
-                            try {
-                                Base64.decode(content, Base64.DEFAULT)
-                            } catch (e: Exception) {
-                                Log.e(tag, "Erro ao decodificar Base64: ${e.message}")
-                                content.toByteArray(Charsets.UTF_8)
-                            }
-                        }
-                    }
-
+                    val decodedContent = Base64.decode(content, Base64.DEFAULT)
                     val decryptedContent = runBlocking {
                         cryptoService.decryptMessage(
                             currentUserId,
@@ -153,18 +131,20 @@ class MessageRepository @Inject constructor(
                             encryptionType
                         )
                     }
-
-                    if (decryptedContent != null && decryptedContent.isNotBlank()) {
+                    if (decryptedContent != null) {
                         content = decryptedContent
-                        Log.d(tag, "Mensagem decriptografada com sucesso: ${decryptedContent.take(50)}...")
+                        Log.d(tag, "Mensagem decriptografada com sucesso de $senderId")
                     } else {
-                        content = "🔒 Erro ao decriptografar esta mensagem."
-                        Log.e(tag, "Falha ao decriptografar mensagem de $senderId - conteúdo vazio ou nulo")
+                        Log.w(tag, "Falha ao decriptografar mensagem de $senderId - resultado nulo")
                     }
                 } catch (e: Exception) {
-                    logger("DecryptionError", "Falha ao decriptografar mensagem: ${e.message}")
-                    content = "🔒 Erro ao decriptografar esta mensagem."
-                    Log.e(tag, "Stacktrace: ", e)
+                    // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de decriptografia
+                    Log.e(tag, "Erro ao decriptografar mensagem de $senderId: ${e.message}")
+                    Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                    Log.e(tag, "Conteúdo criptografado: $content")
+                    Log.e(tag, "Tipo de criptografia: $encryptionType")
+                    Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                    // FIM ALTERAÇÃO 28/08/2025 R
                 }
             }
         }
@@ -495,6 +475,7 @@ class MessageRepository @Inject constructor(
                     "participants" to listOf(currentUserId, otherUserId),
                     "createdAt" to com.google.firebase.Timestamp.now(),
                     "lastMessage" to "",
+                    // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Nomes dos campos originais
                     "lastMessageTime" to com.google.firebase.Timestamp.now(),
                     "lastMessageSender" to ""
                 )

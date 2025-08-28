@@ -98,7 +98,10 @@ class SendMessageRepository @Inject constructor(
                 "read" to false,
                 "delivered" to false,
                 "encryptionType" to encryptedMessage.type,
-                "timestamp" to encryptedMessage.timestamp
+                "timestamp" to encryptedMessage.timestamp,
+                // ALTERAÇÃO 28/08/2025 R - Campo originalContent para mensagens próprias
+                "originalContent" to sanitizedContent
+                // FIM ALTERAÇÃO 28/08/2025 R
             )
 
             // Adiciona a mensagem criptografada ao Firestore
@@ -108,7 +111,7 @@ class SendMessageRepository @Inject constructor(
             Log.d(tag, "Mensagem criptografada enviada com id=${addedDoc.id}")
 
             // Atualiza a última mensagem da sala
-            updateRoomLastMessage(roomId, "Mensagem criptografada", senderId)
+            updateRoomLastMessage(roomId, sanitizedContent, senderId)
 
             // Verifica se precisa rotacionar chaves
             cryptoService.checkAndRotateKeys(senderId)
@@ -193,13 +196,14 @@ class SendMessageRepository @Inject constructor(
                 "audio" to audioUrl,
                 "duration" to duration,
                 "encryptionType" to encryptedMessage.type,
-                "timestamp" to encryptedMessage.timestamp
+                "timestamp" to encryptedMessage.timestamp,
+                // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Campo originalContent removido
             )
 
             firestore.collection("rooms").document(roomId).collection("messages")
                 .add(messageData).await()
 
-            updateRoomLastMessage(roomId, "Áudio criptografado", senderId)
+            updateRoomLastMessage(roomId, "🎵 ${sanitizedContent.ifBlank { "Áudio" }}", senderId)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -279,13 +283,14 @@ class SendMessageRepository @Inject constructor(
                 "delivered" to false,
                 "image" to imageUrl,
                 "encryptionType" to encryptedMessage.type,
-                "timestamp" to encryptedMessage.timestamp
+                "timestamp" to encryptedMessage.timestamp,
+                // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Campo originalContent removido
             )
 
             firestore.collection("rooms").document(roomId).collection("messages")
                 .add(messageData).await()
 
-            updateRoomLastMessage(roomId, "Imagem criptografada", senderId)
+            updateRoomLastMessage(roomId, "📷 ${sanitizedContent.ifBlank { "Imagem" }}", senderId)
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -303,8 +308,10 @@ class SendMessageRepository @Inject constructor(
                 .update(
                     mapOf(
                         "lastMessage" to content,
-                        "lastMessageTime" to Timestamp.now(),
-                        "lastMessageSender" to senderId
+                        // ALTERAÇÃO 28/08/2025 R - Nomes corretos dos campos para compatibilidade
+                        "lastMessageTimestamp" to Timestamp.now(),
+                        "lastMessageSenderId" to senderId
+                        // FIM ALTERAÇÃO 28/08/2025 R
                     )
                 ).await()
         } catch (e: Exception) {

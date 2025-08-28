@@ -111,8 +111,12 @@ class CryptoService @Inject constructor(
             
             encryptedMessage
         } catch (e: Exception) {
-            Log.e(tag, "Erro ao criptografar mensagem: ${e.message}", e)
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de criptografia
+            Log.e(tag, "Erro ao criptografar mensagem: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
             null
+            // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
 
@@ -126,19 +130,32 @@ class CryptoService @Inject constructor(
         encryptionType: Int
     ): String? = withContext(Dispatchers.IO) {
         try {
+            // ALTERAÇÃO 28/08/2025 R - Decriptografia com inicialização explícita de chaves
             val manager = getManager(currentUserId)
+            
+            // Garante que as chaves estejam inicializadas antes da decriptografia
+            if (!manager.isInitialized()) {
+                Log.d(tag, "Inicializando chaves para usuário $currentUserId antes da decriptografia")
+                manager.initializeKeys()
+            }
+            
             val decryptedMessage = manager.decryptMessage(senderId, encryptedContent, encryptionType)
             
             if (decryptedMessage != null) {
-                Log.d(tag, "Mensagem decriptografada com sucesso")
+                Log.d(tag, "Mensagem decriptografada com sucesso de $senderId")
             } else {
-                Log.e(tag, "Falha ao decriptografar mensagem")
+                Log.w(tag, "Falha ao decriptografar mensagem de $senderId")
             }
             
             decryptedMessage
+            // FIM ALTERAÇÃO 28/08/2025 R
         } catch (e: Exception) {
-            Log.e(tag, "Erro ao decriptografar mensagem: ${e.message}", e)
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de decriptografia
+            Log.e(tag, "Erro ao decriptografar mensagem de $senderId: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
             null
+            // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
 

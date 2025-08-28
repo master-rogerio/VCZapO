@@ -469,8 +469,13 @@ class EnhancedSignalProtocolManager(
                 return encryptMessageAlternative(remoteUserId, message)
             }
         } catch (e: Exception) {
-            Log.e(tag, "Erro ao criptografar mensagem para $remoteUserId: ${e.message}", e)
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de criptografia
+            Log.e(tag, "Erro ao criptografar mensagem para $remoteUserId: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Tamanho da mensagem: ${message.length}")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
             null
+            // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
     
@@ -481,17 +486,16 @@ class EnhancedSignalProtocolManager(
         return try {
             Log.d(tag, "Usando criptografia alternativa para $remoteUserId")
             
-            // Usa AES com chave derivada das chaves de identidade
-            val identityKey = store.identityKeyPair?.privateKey
-            if (identityKey == null) {
-                Log.e(tag, "Chave de identidade não encontrada")
-                return null
+            // ALTERAÇÃO 28/08/2025 R - Criptografia alternativa com chave consistente
+            // Usa uma chave baseada no userId do remetente para permitir descriptografia pelo destinatário
+            val currentUserId = userId // userId do remetente
+            val keyBytes = currentUserId.toByteArray(Charsets.UTF_8)
+            val paddedKey = ByteArray(32) { index ->
+                if (index < keyBytes.size) keyBytes[index] else 0
             }
             
-            // Gera uma chave AES a partir da chave de identidade
-            val keyBytes = identityKey.serialize().take(32).toByteArray()
             val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
-            val keySpec = javax.crypto.spec.SecretKeySpec(keyBytes, "AES")
+            val keySpec = javax.crypto.spec.SecretKeySpec(paddedKey, "AES")
             
             cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, keySpec)
             val iv = cipher.iv
@@ -500,13 +504,17 @@ class EnhancedSignalProtocolManager(
             // Combina IV + dados criptografados
             val combined = iv + encryptedBytes
             
+            Log.d(tag, "Mensagem criptografada usando chave do remetente: $currentUserId")
+            
             EncryptedMessage(
                 content = combined,
                 type = 1, // Tipo customizado para criptografia alternativa
                 timestamp = System.currentTimeMillis()
             )
+            // FIM ALTERAÇÃO 28/08/2025 R
         } catch (e: Exception) {
-            Log.e(tag, "Erro na criptografia alternativa: ${e.message}", e)
+            // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Log simples de erro
+            Log.e(tag, "Erro na criptografia alternativa: ${e.message}")
             null
         }
     }
@@ -516,8 +524,15 @@ class EnhancedSignalProtocolManager(
      */
     fun decryptMessage(senderId: String, encryptedContent: ByteArray, encryptionType: Int): String? {
         return try {
+            // ALTERAÇÃO 28/08/2025 R - Logs detalhados para debug da decriptografia
+            Log.d(tag, "Tentando decriptografar mensagem de $senderId")
+            Log.d(tag, "Tipo de criptografia: $encryptionType")
+            Log.d(tag, "Tamanho do conteúdo: ${encryptedContent.size}")
+            // FIM ALTERAÇÃO 28/08/2025 R
+            
             // Se é tipo customizado (1), usa decriptografia alternativa
             if (encryptionType == 1) {
+                Log.d(tag, "Usando decriptografia alternativa para tipo 1")
                 return decryptMessageAlternative(senderId, encryptedContent)
             }
             
@@ -528,10 +543,12 @@ class EnhancedSignalProtocolManager(
                 
                 val decryptedBytes = when (encryptionType) {
                     CiphertextMessage.PREKEY_TYPE -> {
+                        Log.d(tag, "Decriptografando mensagem PREKEY_TYPE")
                         val preKeyMessage = PreKeySignalMessage(encryptedContent)
                         sessionCipher.decrypt(preKeyMessage)
                     }
                     CiphertextMessage.WHISPER_TYPE -> {
+                        Log.d(tag, "Decriptografando mensagem WHISPER_TYPE")
                         val signalMessage = SignalMessage(encryptedContent)
                         sessionCipher.decrypt(signalMessage)
                     }
@@ -541,15 +558,23 @@ class EnhancedSignalProtocolManager(
                     }
                 }
                 
-                String(decryptedBytes, Charsets.UTF_8)
+                val result = String(decryptedBytes, Charsets.UTF_8)
+                Log.d(tag, "Decriptografia tradicional bem-sucedida: ${result.take(50)}...")
+                result
             } catch (e: Exception) {
                 Log.w(tag, "Falha na decriptografia tradicional, tentando método alternativo: ${e.message}")
                 // Tenta método alternativo como fallback
                 return decryptMessageAlternative(senderId, encryptedContent)
             }
         } catch (e: Exception) {
-            Log.e(tag, "Erro ao decriptografar mensagem de $senderId: ${e.message}", e)
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de decriptografia
+            Log.e(tag, "Erro ao decriptografar mensagem de $senderId: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Tamanho do conteúdo criptografado: ${encryptedContent.size}")
+            Log.e(tag, "Tipo de criptografia: $encryptionType")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
             null
+            // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
     
@@ -558,36 +583,51 @@ class EnhancedSignalProtocolManager(
      */
     private fun decryptMessageAlternative(senderId: String, encryptedContent: ByteArray): String? {
         return try {
-            Log.d(tag, "Usando decriptografia alternativa para $senderId")
+            Log.d(tag, "Usando decriptografia alternativa para senderId: $senderId")
+            Log.d(tag, "Tamanho do conteúdo criptografado: ${encryptedContent.size}")
             
-            // Usa AES com chave derivada das chaves de identidade
-            val identityKey = store.identityKeyPair?.privateKey
-            if (identityKey == null) {
-                Log.e(tag, "Chave de identidade não encontrada")
-                return null
+            // ALTERAÇÃO 28/08/2025 R - Decriptografia alternativa corrigida
+            // Usa a chave do remetente (senderId) para descriptografar
+            val keyBytes = senderId.toByteArray(Charsets.UTF_8)
+            val paddedKey = ByteArray(32) { index ->
+                if (index < keyBytes.size) keyBytes[index] else 0
             }
             
-            // Gera a mesma chave AES usada na criptografia
-            val keyBytes = identityKey.serialize().take(32).toByteArray()
-            val keySpec = javax.crypto.spec.SecretKeySpec(keyBytes, "AES")
+            Log.d(tag, "Chave gerada a partir do senderId: ${paddedKey.size} bytes")
+            
+            val keySpec = javax.crypto.spec.SecretKeySpec(paddedKey, "AES")
             
             // Separa IV (primeiros 12 bytes) dos dados criptografados
-            if (encryptedContent.size < 12) {
-                Log.e(tag, "Dados criptografados muito pequenos")
+            if (encryptedContent.size < 16) { // AES/GCM precisa de pelo menos 16 bytes (12 IV + 4 mínimo)
+                Log.e(tag, "Dados criptografados muito pequenos: ${encryptedContent.size} bytes (mínimo 16)")
                 return null
             }
             
             val iv = encryptedContent.take(12).toByteArray()
             val cipherData = encryptedContent.drop(12).toByteArray()
             
+            Log.d(tag, "IV size: ${iv.size}, cipher data size: ${cipherData.size}")
+            
             val cipher = javax.crypto.Cipher.getInstance("AES/GCM/NoPadding")
             val ivSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
             cipher.init(javax.crypto.Cipher.DECRYPT_MODE, keySpec, ivSpec)
             
             val decryptedBytes = cipher.doFinal(cipherData)
-            String(decryptedBytes, Charsets.UTF_8)
+            val result = String(decryptedBytes, Charsets.UTF_8)
+            
+            Log.d(tag, "Descriptografia alternativa bem-sucedida para $senderId")
+            result
+            // FIM ALTERAÇÃO 28/08/2025 R
         } catch (e: Exception) {
-            Log.e(tag, "Erro na decriptografia alternativa: ${e.message}", e)
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado do erro de descriptografia
+            Log.e(tag, "Erro na decriptografia alternativa para $senderId: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Tamanho do conteúdo: ${encryptedContent.size}")
+            if (encryptedContent.size >= 12) {
+                Log.e(tag, "IV: ${encryptedContent.take(12).joinToString { "%02x".format(it) }}")
+            }
+            Log.e(tag, "Stack trace: ${e.stackTrace.take(5).joinToString("\n")}")
+            // FIM ALTERAÇÃO 28/08/2025 R
             null
         }
     }

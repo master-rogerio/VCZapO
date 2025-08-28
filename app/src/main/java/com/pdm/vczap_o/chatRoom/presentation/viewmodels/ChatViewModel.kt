@@ -219,7 +219,11 @@ class ChatViewModel @Inject constructor(
                     recipientsToken = recipientsToken
                 )
             } catch (e: Exception) {
-                logger(tag, "Error sending image message: $e")
+                // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de envio de imagem
+                logger(tag, "Erro ao enviar mensagem de imagem: ${e.message}")
+                logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                // FIM ALTERAÇÃO 28/08/2025 R
             }
         }
     }
@@ -246,7 +250,11 @@ class ChatViewModel @Inject constructor(
                     recipientsToken = recipientsToken
                 )
             } catch (e: Exception) {
-                logger(tag, "Error sending location message: $e")
+                // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de envio de localização
+                logger(tag, "Erro ao enviar mensagem de localização: ${e.message}")
+                logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                // FIM ALTERAÇÃO 28/08/2025 R
             }
         }
     }
@@ -272,7 +280,11 @@ class ChatViewModel @Inject constructor(
                     messageContent = messageContent,
                 )
             } catch (e: Exception) {
-                logger(tag, "Error adding reaction: $e")
+                // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de adição de reação
+                logger(tag, "Erro ao adicionar reação: ${e.message}")
+                logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                // FIM ALTERAÇÃO 28/08/2025 R
             }
         }
     }

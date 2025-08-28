@@ -223,7 +223,8 @@ class AuthViewModel @Inject constructor(
                 val signalManager = SignalProtocolManager(application, userId)
                 signalManager.initializeKeys()
 
-                val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP)
+                //val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP) //Mod 28/08
+                val identityKey = Base64.encodeToString(signalManager.getPublicIdentityKey(), Base64.NO_WRAP)
                 val registrationId = signalManager.getRegistrationId()
                 val preKeys = signalManager.getPreKeysForPublication().map {
                     mapOf(
@@ -232,6 +233,24 @@ class AuthViewModel @Inject constructor(
                     )
                 }
                 val signedPreKeyRecord = signalManager.getSignedPreKeyForPublication()
+                if (signedPreKeyRecord != null) {
+                    val signedPreKey = mapOf(
+                        "keyId" to signedPreKeyRecord.id,
+                        "publicKey" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),
+                        "signature" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)
+                    )
+
+                    authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey)
+                        .onSuccess {
+                            Log.d("AuthViewModel", "Chaves de segurança publicadas com sucesso para o utilizador $userId.")
+                        }
+                        .onFailure { error ->
+                            _message.value = "Falha ao publicar chaves: ${error.message}"
+                        }
+                } else {
+                    _message.value = "Falha ao obter a chave pré-assinada."
+                }
+                /* Mod 28/08
                 val signedPreKey = mapOf(
                     "keyId" to signedPreKeyRecord.id,
                     "publicKey" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),
@@ -245,6 +264,7 @@ class AuthViewModel @Inject constructor(
                     .onFailure { error ->
                         _message.value = "Falha ao publicar chaves: ${error.message}"
                     }
+                */
 
             } catch (e: Exception) {
                 _message.value = "Falha crítica nas chaves de segurança: ${e.javaClass.simpleName} - ${e.message}"

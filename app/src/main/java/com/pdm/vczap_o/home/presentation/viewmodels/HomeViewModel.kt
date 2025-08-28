@@ -34,16 +34,23 @@ class HomeViewModel @Inject constructor(
 
     private fun loadCachedRooms() {
         viewModelScope.launch {
-            val cachedRooms = cacheHelper.loadRooms()
-            _uiState.update { it.copy(rooms = cachedRooms) }
-            logger(tag, "Cached rooms loaded ${cachedRooms.size}")
+            try {
+                val cachedRooms = cacheHelper.loadRooms()
+                _uiState.update { it.copy(rooms = cachedRooms, isLoading = false) }
+                logger(tag, "Cached rooms loaded: ${cachedRooms.size}")
+            } catch (e: Exception) {
+                logger(tag, "Error loading cached rooms: ${e.message}")
+                _uiState.update { it.copy(error = "Error loading cached rooms") }
+            }
         }
     }
 
     init {
         if (auth.currentUser != null) {
+            // ALTERAÇÃO 28/08/2025 R - Carrega salas do cache primeiro, depois escuta mudanças
             loadCachedRooms()
             listenToRooms()
+            // FIM ALTERAÇÃO 28/08/2025 R
         } else {
             _uiState.update { it.copy(error = "User not authenticated") }
         }
@@ -69,20 +76,43 @@ class HomeViewModel @Inject constructor(
 
         _uiState.update { it.copy(isLoading = true, error = null) }
         roomsListenerJob = viewModelScope.launch {
-            listenToRoomsUseCase(userId).collectLatest { result ->
-                result.onSuccess { roomsList ->
-                    _uiState.update { it.copy(rooms = roomsList, isLoading = false) }
-                    cacheHelper.saveRooms(roomsList)
-                }
-                result.onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load rooms: ${error.message}",
-                            isLoading = false
-                        )
+            try {
+                listenToRoomsUseCase(userId).collectLatest { result ->
+                    result.onSuccess { roomsList ->
+                        // ALTERAÇÃO 28/08/2025 R - Atualiza estado e salva no cache
+                        _uiState.update { it.copy(rooms = roomsList, isLoading = false, error = null) }
+                        
+                        // Salva as salas no cache para uso offline
+                        viewModelScope.launch {
+                            try {
+                                cacheHelper.saveRooms(roomsList)
+                                logger(tag, "Rooms saved to cache: ${roomsList.size}")
+                            } catch (e: Exception) {
+                                logger(tag, "Error saving rooms to cache: ${e.message}")
+                            }
+                        }
+                        
+                        logger(tag, "Rooms updated: ${roomsList.size}")
+                        // FIM ALTERAÇÃO 28/08/2025 R
                     }
-                    logger(tag, "Failed to load rooms: ${error.message}")
+                    result.onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                error = "Failed to load rooms: ${error.message}",
+                                isLoading = false
+                            )
+                        }
+                        logger(tag, "Failed to load rooms: ${error.message}")
+                    }
                 }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        error = "Error in rooms listener: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                logger(tag, "Error in rooms listener: ${e.message}")
             }
         }
     }

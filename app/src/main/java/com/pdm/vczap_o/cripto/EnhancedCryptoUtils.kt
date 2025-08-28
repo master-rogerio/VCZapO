@@ -230,9 +230,11 @@ object EnhancedCryptoUtils {
      * Verifica se um ID de usuário é válido
      */
     fun isValidUserId(userId: String): Boolean {
+        // ALTERAÇÃO 28/08/2025 R - Validação menos restritiva para IDs do Firebase
+        // IDs do Firebase podem conter caracteres especiais e ter comprimentos variados
         return userId.isNotBlank() && 
-               userId.length >= 3 && 
-               userId.length <= 50 &&
-               userId.matches(Regex("^[a-zA-Z0-9._-]+$"))
+               userId.length >= 1 && 
+               userId.length <= 128
+        // FIM ALTERAÇÃO 28/08/2025 R
     }
 }

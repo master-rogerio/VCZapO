@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AddLocationAlt
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -150,6 +152,16 @@ fun MessageInput(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = KeyboardType.Text,
             ),
+            // ALTERAÇÃO 28/08/2025 R - Suporte ao envio com tecla Enter
+            // Enter simples: envia mensagem | Shift+Enter: quebra linha
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    if (messageText.isNotBlank()) {
+                        onSend()
+                    }
+                }
+            ),
+            // FIM ALTERAÇÃO 28/08/2025 R
             modifier = Modifier.weight(1f),
             textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onPrimaryContainer),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimaryContainer),
