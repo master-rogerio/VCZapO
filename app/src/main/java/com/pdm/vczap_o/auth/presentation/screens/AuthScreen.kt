@@ -111,8 +111,7 @@ fun AuthScreen(
                     popUpTo(AuthScreen) { inclusive = true }
                 }
             } else {
-                // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Redirecionamento para MainScreen
-                navController.navigate(MainScreen(0)) {
+                navController.navigate(SetUserDetailsDC) {
                     popUpTo(AuthScreen) { inclusive = true }
                 }
             }

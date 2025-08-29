@@ -218,6 +218,7 @@ fun EditProfileScreen(
                         authViewModel.updateUserDocument(newData)
                         showToast(context, "Imagem de Perfil atualizado com sucesso!")
                         authViewModel.loadUserData()
+                        navController.popBackStack()  // Retorna à tela anterior após salvar.
                     } else {
                         showToast(context, "Nenhum dado foi atualizado")
                     }

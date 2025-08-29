@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 
@@ -103,16 +104,17 @@ fun MessageInput(
         BasicTextField(
             value = messageText,
             onValueChange = onMessageChange,
-            maxLines = 5,
-            singleLine = false,
+            maxLines = 1,
+            singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Send
             ),
             // ALTERAÇÃO 28/08/2025 R - Suporte ao envio com tecla Enter
             // Enter simples: envia mensagem | Shift+Enter: quebra linha
             keyboardActions = KeyboardActions(
-                onDone = {
+                onSend = {
                     if (messageText.isNotBlank()) {
                         onSend()
                     }
