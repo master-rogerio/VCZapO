@@ -124,7 +124,9 @@ fun ChatAppNavigation() {
                 roomId = args.roomId,
                 takenFromCamera = args.takenFromCamera.toString(),
                 profileUrl = args.profileUrl,
-                recipientsToken = args.recipientsToken
+                recipientsToken = args.recipientsToken,
+                currentUserId = args.currentUserId,
+                otherUserId = args.otherUserId
             )
         }
 

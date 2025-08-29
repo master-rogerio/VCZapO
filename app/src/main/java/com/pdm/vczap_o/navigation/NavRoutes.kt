@@ -81,6 +81,8 @@ data class ImagePreviewScreen(
     val takenFromCamera: Boolean,
     val profileUrl: String = "",
     val recipientsToken: String = "",
+    val currentUserId: String = "",
+    val otherUserId: String = ""
 )
 
 /**

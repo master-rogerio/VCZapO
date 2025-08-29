@@ -221,9 +221,11 @@ object EnhancedCryptoUtils {
 
     /**
      * Sanitiza dados antes de processamento
+     * CORREÇÃO: Preserva caracteres acentuados e UTF-8 válidos
      */
     fun sanitizeString(input: String): String {
-        return input.trim().replace(Regex("[^\\x20-\\x7E]"), "")
+        // Remove apenas caracteres de controle perigosos, preserva acentos e emojis
+        return input.trim().replace(Regex("[\\p{Cntrl}&&[^\r\n\t]]"), "")
     }
 
     /**

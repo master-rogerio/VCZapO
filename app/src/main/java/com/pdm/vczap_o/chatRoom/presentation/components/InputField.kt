@@ -23,7 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
@@ -59,57 +59,14 @@ fun MessageInput(
     onMessageChange: (String) -> Unit,
     onSend: () -> Unit,
     onImageClick: () -> Unit,
+    onVideoClick: () -> Unit,
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
-    sendLocationMessage: (
-        latitude: Double,
-        longitude: Double,
-        senderName: String,
-        roomId: String,
-        currentUserId: String,
-        profileUrl: String,
-        recipientsToken: String,
-    ) -> Unit,
     roomId: String,
-    userData: NewUser?, recipientToken: String,
+    userData: NewUser?, 
+    recipientToken: String,
 ) {
-    val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(false) }
-    val locationPermission = Manifest.permission.ACCESS_FINE_LOCATION
-
-    val permissionRequest = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            getCurrentLocation(
-                context = context,
-                onLocationResult = { lat: Double?, lon: Double? ->
-                    if (lat != null && lon != null) {
-                        sendLocationMessage(
-                            lat,
-                            lon,
-                            userData?.username ?: "",
-                            roomId,
-                            userData?.userId ?: "",
-                            userData?.profileUrl ?: "",
-                            recipientToken
-                        )
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Unable to retrieve location",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                })
-        } else {
-            Toast.makeText(
-                context,
-                "Location permission denied",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
+    // REMOVIDO: Código de localização removido conforme solicitado
 //    Check if keyboard is shown
 //    val density = LocalDensity.current
 //    val isKeyboardVisible =
@@ -192,14 +149,15 @@ fun MessageInput(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AddLocationAlt,
-                                contentDescription = "More options",
+                                imageVector = Icons.Default.VideoLibrary,
+                                contentDescription = "Add Video",
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier
                                     .graphicsLayer {
                                         translationX = translate
+                                        alpha = homeIconAlpha
                                     }
-                                    .clickable(onClick = { showDialog = true })
+                                    .clickable(onClick = { onVideoClick() })
                             )
                             Icon(
                                 imageVector = Icons.Default.AddPhotoAlternate,
@@ -251,54 +209,7 @@ fun MessageInput(
             }
         }
     }
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Share Location") },
-            text = { Text("You are about to share your location, do you want to continue?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDialog = false
-
-                    // Check if the permission is already granted
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            locationPermission
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        getCurrentLocation(context) { lat, lon ->
-                            if (lat != null && lon != null) {
-                                sendLocationMessage(
-                                    lat,
-                                    lon,
-                                    userData?.username ?: "",
-                                    roomId,
-                                    userData?.userId ?: "",
-                                    userData?.profileUrl ?: "",
-                                    recipientToken
-                                )
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Unable to retrieve location",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    } else {
-                        permissionRequest.launch(locationPermission)
-                    }
-                }) {
-                    Text("Yes")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("No")
-                }
-            }
-        )
-    }
+    // REMOVIDO: Diálogo de localização removido
 }
 
 
@@ -310,17 +221,7 @@ fun PrevInputToolBar() {
         onImageClick = {},
         isRecording = false,
         onRecordAudio = {},
-        sendLocationMessage = {
-                latitude: Double,
-                longitude: Double,
-                senderName: String,
-                roomId: String,
-                currentUserId: String,
-                profileUrl: String,
-                recipientsToken: String,
-            ->
-            {}
-        },
+        onVideoClick = {},
         roomId = "",
         userData = NewUser(),
         recipientToken = ""

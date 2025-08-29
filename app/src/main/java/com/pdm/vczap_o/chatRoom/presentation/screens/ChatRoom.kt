@@ -123,7 +123,9 @@ fun ChatScreen(
                 roomId = roomId,
                 takenFromCamera = false,
                 profileUrl = userData?.profileUrl.orEmpty(),
-                recipientsToken = deviceToken
+                recipientsToken = deviceToken,
+                currentUserId = currentUserId,
+                otherUserId = userId
             )
             navController.navigate(route) {
                 launchSingleTop = true
@@ -338,7 +340,10 @@ fun ChatScreen(
                                 audioPermissionLauncher.launch(audioPermission)
                             }
                         },
-                        sendLocationMessage = chatViewModel::sendLocationMessage,
+                        onVideoClick = {
+                            // TODO: Implementar seleção de vídeo
+                            // navController.navigate("video_picker/$roomId")
+                        },
                         userData = userData,
                         roomId = roomId,
                         recipientToken = deviceToken

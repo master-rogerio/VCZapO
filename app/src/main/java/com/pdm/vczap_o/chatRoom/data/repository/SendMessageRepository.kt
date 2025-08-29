@@ -273,6 +273,10 @@ class SendMessageRepository @Inject constructor(
 
             val encryptedContent = Base64.encodeToString(encryptedMessage.content, Base64.NO_WRAP)
 
+            Log.d(tag, "Enviando mensagem de imagem criptografada para roomId=$roomId")
+            Log.d(tag, "ImageUrl: $imageUrl")
+            Log.d(tag, "Content: $sanitizedContent")
+
             val messageData = hashMapOf(
                 "content" to encryptedContent,
                 "createdAt" to Timestamp.now(),

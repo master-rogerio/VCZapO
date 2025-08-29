@@ -13,3 +13,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+/.idea/studiobot.xml
+/.idea/appInsightsSettings.xml
+/acli.exe

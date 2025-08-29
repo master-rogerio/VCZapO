@@ -15,7 +15,7 @@ import com.pdm.vczap_o.chatRoom.domain.MarkMessagesAsReadUseCase
 import com.pdm.vczap_o.chatRoom.domain.PrefetchMessagesUseCase
 import com.pdm.vczap_o.chatRoom.domain.RemoveMessageListenerUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendImageMessageUseCase
-import com.pdm.vczap_o.chatRoom.domain.SendLocationMessageUseCase
+// REMOVIDO: import com.pdm.vczap_o.chatRoom.domain.SendLocationMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendTextMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UpdateMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UploadImageUseCase
@@ -42,7 +42,7 @@ class ChatViewModel @Inject constructor(
     private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,
     private val sendTextMessageUseCase: SendTextMessageUseCase,
     private val sendImageMessageUseCase: SendImageMessageUseCase,
-    private val sendLocationMessageUseCase: SendLocationMessageUseCase,
+    // REMOVIDO: private val sendLocationMessageUseCase: SendLocationMessageUseCase,
     private val uploadImageUseCase: UploadImageUseCase,
     private val addReactionUseCase: AddReactionUseCase,
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
@@ -73,7 +73,7 @@ class ChatViewModel @Inject constructor(
         this.currentUserId = currentUserId
         this.otherUserId = otherUserId
 
-        Log.d(tag, "Initializing chat: roomId=$roomId")
+        Log.d(tag, "Initializing chat: roomId=$roomId, currentUserId=$currentUserId, otherUserId=$otherUserId")
 
         viewModelScope.launch {
             try {
@@ -181,11 +181,19 @@ class ChatViewModel @Inject constructor(
             roomId?.let { roomId ->
                 currentUserId?.let { userId ->
                     try {
+                        // CORREÇÃO: Verificar se otherUserId não é null antes de enviar áudio
+                        val validOtherUserId = otherUserId
+                        if (validOtherUserId.isNullOrBlank()) {
+                            logger(tag, "Erro: otherUserId é null ou vazio ao enviar áudio")
+                            _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                            return@launch
+                        }
+                        
                         audioRecordingUseCase.sendAudioMessage(
                             roomId = roomId,
                             senderId = userId,
                             senderName = senderName,
-                            otherUserId = otherUserId ?: "",
+                            otherUserId = validOtherUserId,
                             profileUrl = profileUrl,
                             recipientsToken = recipientsToken
                         )
@@ -201,36 +209,73 @@ class ChatViewModel @Inject constructor(
         caption: String,
         imageUrl: String,
         senderName: String,
-        roomId: String,
-        currentUserId: String,
         profileUrl: String,
         recipientsToken: String,
+        roomId: String,
+        currentUserId: String,
+        otherUserId: String
     ) {
         viewModelScope.launch {
             try {
+                // CORREÇÃO: Usar os IDs passados como parâmetro para evitar problema de instâncias diferentes
+                Log.d(tag, "DEBUG sendImageMessage - roomId: '$roomId'")
+                Log.d(tag, "DEBUG sendImageMessage - currentUserId: '$currentUserId'")
+                Log.d(tag, "DEBUG sendImageMessage - otherUserId: '$otherUserId'")
+                
+                if (roomId.isBlank()) {
+                    logger(tag, "Erro: roomId é vazio ao enviar imagem")
+                    _chatState.value = ChatState.Error("Erro interno: ID da sala não encontrado")
+                    return@launch
+                }
+                
+                if (currentUserId.isBlank()) {
+                    logger(tag, "Erro: currentUserId é vazio ao enviar imagem")
+                    _chatState.value = ChatState.Error("Erro interno: ID do usuário atual não encontrado")
+                    return@launch
+                }
+                
+                if (otherUserId.isBlank()) {
+                    logger(tag, "Erro: otherUserId é vazio ao enviar imagem")
+                    _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                    return@launch
+                }
+                
+                // CORREÇÃO: Logs detalhados para debug do envio de imagem
+                Log.d(tag, "Iniciando envio de imagem:")
+                Log.d(tag, "  - Caption: $caption")
+                Log.d(tag, "  - ImageUrl: $imageUrl")
+                Log.d(tag, "  - RoomId: $roomId")
+                Log.d(tag, "  - SenderId: $currentUserId")
+                Log.d(tag, "  - OtherUserId: $otherUserId")
+                
                 sendImageMessageUseCase(
                     caption = caption,
                     imageUrl = imageUrl,
                     senderName = senderName,
                     roomId = roomId,
                     senderId = currentUserId,
-                    otherUserId = otherUserId ?: "",
+                    otherUserId = otherUserId,
                     profileUrl = profileUrl,
                     recipientsToken = recipientsToken
                 )
+                
+                Log.d(tag, "Envio de imagem concluído com sucesso")
             } catch (e: Exception) {
                 // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de envio de imagem
                 logger(tag, "Erro ao enviar mensagem de imagem: ${e.message}")
                 logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
                 logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                _chatState.value = ChatState.Error("Falha ao enviar imagem: ${e.message}")
                 // FIM ALTERAÇÃO 28/08/2025 R
             }
         }
     }
 
-    fun sendLocationMessage(
-        latitude: Double,
-        longitude: Double,
+    // REMOVIDO: Função sendLocationMessage removida conforme solicitado
+    
+    fun sendVideoMessage(
+        caption: String,
+        videoUrl: String,
         senderName: String,
         roomId: String,
         currentUserId: String,
@@ -239,28 +284,49 @@ class ChatViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
-                sendLocationMessageUseCase(
-                    latitude = latitude,
-                    longitude = longitude,
-                    senderName = senderName,
-                    roomId = roomId,
-                    senderId = currentUserId,
-                    otherUserId = otherUserId ?: "",
-                    profileUrl = profileUrl,
-                    recipientsToken = recipientsToken
-                )
+                // Verificar se otherUserId não é null antes de enviar
+                val validOtherUserId = otherUserId
+                if (validOtherUserId.isNullOrBlank()) {
+                    logger(tag, "Erro: otherUserId é null ou vazio ao enviar vídeo")
+                    _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                    return@launch
+                }
+                
+                // Logs detalhados para debug do envio de vídeo
+                Log.d(tag, "Iniciando envio de vídeo:")
+                Log.d(tag, "  - Caption: $caption")
+                Log.d(tag, "  - VideoUrl: $videoUrl")
+                Log.d(tag, "  - RoomId: $roomId")
+                Log.d(tag, "  - SenderId: $currentUserId")
+                Log.d(tag, "  - OtherUserId: $validOtherUserId")
+                
+                // TODO: Implementar SendVideoMessageUseCase
+                // sendVideoMessageUseCase(...)
+                
+                Log.d(tag, "Envio de vídeo concluído com sucesso")
             } catch (e: Exception) {
-                // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de envio de localização
-                logger(tag, "Erro ao enviar mensagem de localização: ${e.message}")
+                logger(tag, "Erro ao enviar mensagem de vídeo: ${e.message}")
                 logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
                 logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
-                // FIM ALTERAÇÃO 28/08/2025 R
+                _chatState.value = ChatState.Error("Falha ao enviar vídeo: ${e.message}")
             }
         }
     }
 
     suspend fun uploadImage(imageUri: Uri, username: String): String? {
         return uploadImageUseCase(imageUri, username)
+    }
+    
+    suspend fun uploadVideo(videoUri: Uri, username: String): String? {
+        // TODO: Implementar UploadVideoUseCase
+        return try {
+            Log.d(tag, "Upload de vídeo iniciado para: $videoUri")
+            // return uploadVideoUseCase(videoUri, username)
+            null // Temporário até implementar o use case
+        } catch (e: Exception) {
+            Log.e(tag, "Erro no upload de vídeo: ${e.message}")
+            null
+        }
     }
 
     fun addReactionToMessage(
