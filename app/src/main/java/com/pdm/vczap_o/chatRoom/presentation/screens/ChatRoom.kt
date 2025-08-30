@@ -134,6 +134,95 @@ fun ChatScreen(
         }
     }
 
+    // ADICIONADO: Launcher para seleção de vídeos
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { videoUri ->
+            // ALTERAÇÃO: Implementar upload e envio real de vídeo
+            coroutineScope.launch {
+                try {
+                    Toast.makeText(context, "Fazendo upload do vídeo...", Toast.LENGTH_SHORT).show()
+                    
+                    val videoUrl = chatViewModel.uploadVideo(videoUri, userData?.username ?: "")
+                    if (videoUrl != null) {
+                        chatViewModel.sendVideoMessage(
+                            caption = "", // Sem caption por enquanto
+                            videoUrl = videoUrl,
+                            senderName = userData?.username ?: "",
+                            roomId = roomId,
+                            currentUserId = currentUserId,
+                            profileUrl = userData?.profileUrl ?: "",
+                            recipientsToken = deviceToken
+                        )
+                        Toast.makeText(context, "Vídeo enviado com sucesso!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Falha no upload do vídeo", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erro ao enviar vídeo: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // ADICIONADO: Launcher para seleção de arquivos genéricos
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { fileUri ->
+            // ALTERAÇÃO: Implementar upload e envio real de arquivo
+            coroutineScope.launch {
+                try {
+                    Toast.makeText(context, "Fazendo upload do arquivo...", Toast.LENGTH_SHORT).show()
+                    
+                    // Obter informações do arquivo
+                    val contentResolver = context.contentResolver
+                    val cursor = contentResolver.query(fileUri, null, null, null, null)
+                    var fileName = "arquivo_${System.currentTimeMillis()}"
+                    var fileSize = 0L
+                    var mimeType = contentResolver.getType(fileUri) ?: "application/octet-stream"
+                    
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                            
+                            if (nameIndex != -1) {
+                                fileName = it.getString(nameIndex) ?: fileName
+                            }
+                            if (sizeIndex != -1) {
+                                fileSize = it.getLong(sizeIndex)
+                            }
+                        }
+                    }
+                    
+                    val fileUrl = chatViewModel.uploadFile(fileUri, userData?.username ?: "", fileName)
+                    if (fileUrl != null) {
+                        chatViewModel.sendFileMessage(
+                            caption = "", // Sem caption por enquanto
+                            fileUrl = fileUrl,
+                            fileName = fileName,
+                            fileSize = fileSize,
+                            mimeType = mimeType,
+                            senderName = userData?.username ?: "",
+                            roomId = roomId,
+                            currentUserId = currentUserId,
+                            profileUrl = userData?.profileUrl ?: "",
+                            recipientsToken = deviceToken
+                        )
+                        Toast.makeText(context, "Arquivo enviado com sucesso!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Falha no upload do arquivo", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erro ao enviar arquivo: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+    // FIM ADICIONADO
+
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
@@ -341,9 +430,14 @@ fun ChatScreen(
                             }
                         },
                         onVideoClick = {
-                            // TODO: Implementar seleção de vídeo
-                            // navController.navigate("video_picker/$roomId")
+                            // ALTERAÇÃO: Implementar seleção de vídeo
+                            videoPickerLauncher.launch("video/*")
                         },
+                        // ADICIONADO: Implementar seleção de arquivos genéricos
+                        onFileClick = {
+                            filePickerLauncher.launch("*/*")
+                        },
+                        // FIM ADICIONADO
                         userData = userData,
                         roomId = roomId,
                         recipientToken = deviceToken

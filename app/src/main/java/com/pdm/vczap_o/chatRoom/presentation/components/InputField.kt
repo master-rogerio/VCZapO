@@ -21,6 +21,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
+// ADICIONADO: Imports para suporte a quebra de linha e seleção de arquivos
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.material.icons.filled.AttachFile
+// ADICIONADO: Import para o novo componente
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+// FIM ADICIONADO
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -61,12 +74,18 @@ fun MessageInput(
     onSend: () -> Unit,
     onImageClick: () -> Unit,
     onVideoClick: () -> Unit,
+    // ADICIONADO: Parâmetro para seleção de arquivos genéricos
+    onFileClick: () -> Unit,
+    // FIM ADICIONADO
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
     roomId: String,
     userData: NewUser?, 
     recipientToken: String,
 ) {
+    // ADICIONADO: Estado para controlar o diálogo de seleção de mídia
+    var showMediaDialog by remember { mutableStateOf(false) }
+    // FIM ADICIONADO
     // REMOVIDO: Código de localização removido conforme solicitado
 //    Check if keyboard is shown
 //    val density = LocalDensity.current
@@ -104,15 +123,16 @@ fun MessageInput(
         BasicTextField(
             value = messageText,
             onValueChange = onMessageChange,
-            maxLines = 1,
-            singleLine = true,
+            // ALTERAÇÃO: Suporte a múltiplas linhas para quebras de linha
+            maxLines = 5,
+            singleLine = false,
+            // FIM ALTERAÇÃO
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Send
             ),
-            // ALTERAÇÃO 28/08/2025 R - Suporte ao envio com tecla Enter
-            // Enter simples: envia mensagem | Shift+Enter: quebra linha
+            // ALTERAÇÃO: Suporte ao envio com tecla Enter e quebra de linha com Shift+Enter
             keyboardActions = KeyboardActions(
                 onSend = {
                     if (messageText.isNotBlank()) {
@@ -120,8 +140,29 @@ fun MessageInput(
                     }
                 }
             ),
-            // FIM ALTERAÇÃO 28/08/2025 R
-            modifier = Modifier.weight(1f),
+            // FIM ALTERAÇÃO
+            modifier = Modifier
+                .weight(1f)
+                // ADICIONADO: Suporte a Shift+Enter para quebra de linha
+                .onKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && 
+                        keyEvent.key == Key.Enter) {
+                        if (keyEvent.isShiftPressed) {
+                            // Shift+Enter: adiciona quebra de linha
+                            onMessageChange(messageText + "\n")
+                            true
+                        } else {
+                            // Enter simples: envia mensagem
+                            if (messageText.isNotBlank()) {
+                                onSend()
+                            }
+                            true
+                        }
+                    } else {
+                        false
+                    }
+                },
+                // FIM ADICIONADO
             textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onPrimaryContainer),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimaryContainer),
             decorationBox = { innerTextField ->
@@ -146,33 +187,18 @@ fun MessageInput(
                                 if (messageText.isBlank()) Text("Type a message")
                             }
                         }
-                        Row(
-                            modifier = Modifier,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.VideoLibrary,
-                                contentDescription = "Add Video",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        translationX = translate
-                                        alpha = homeIconAlpha
-                                    }
-                                    .clickable(onClick = { onVideoClick() })
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AddPhotoAlternate,
-                                contentDescription = "Add Photo",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        translationX = translateX
-                                        alpha = homeIconAlpha
-                                    }
-                                    .clickable(onClick = { onImageClick() })
-                            )
-                        }
+                        // ALTERAÇÃO: Substituir múltiplos botões por um único botão de mídia
+                        Icon(
+                            imageVector = Icons.Default.AttachFile,
+                            contentDescription = "Selecionar Mídia",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = homeIconAlpha
+                                }
+                                .clickable(onClick = { showMediaDialog = true })
+                        )
+                        // FIM ALTERAÇÃO
                     }
                 }
             }
@@ -211,7 +237,17 @@ fun MessageInput(
             }
         }
     }
-    // REMOVIDO: Diálogo de localização removido
+    
+    // ADICIONADO: Diálogo de seleção de mídia
+    if (showMediaDialog) {
+        MediaSelectionDialog(
+            onDismiss = { showMediaDialog = false },
+            onImageClick = onImageClick,
+            onVideoClick = onVideoClick,
+            onFileClick = onFileClick
+        )
+    }
+    // FIM ADICIONADO
 }
 
 
@@ -224,6 +260,9 @@ fun PrevInputToolBar() {
         isRecording = false,
         onRecordAudio = {},
         onVideoClick = {},
+        // ADICIONADO: Parâmetro para preview
+        onFileClick = {},
+        // FIM ADICIONADO
         roomId = "",
         userData = NewUser(),
         recipientToken = ""

@@ -9,6 +9,13 @@ fun ChatMessage.toMessageEntity(roomId: String): MessageEntity {
         content = content,
         image = image,
         audio = audio,
+        // ADICIONADO: Novos campos para vídeos e arquivos
+        video = video,
+        file = file,
+        fileName = fileName,
+        fileSize = fileSize,
+        mimeType = mimeType,
+        // FIM ADICIONADO
         createdAt = createdAt,
         senderId = senderId,
         senderName = senderName,
@@ -19,7 +26,7 @@ fun ChatMessage.toMessageEntity(roomId: String): MessageEntity {
         location = location,
         duration = duration,
         roomId = roomId,
-        reactions = reactions
+        reactions = reactions,
     )
 }
 
@@ -29,6 +36,13 @@ fun MessageEntity.toChatMessage(): ChatMessage {
         content = content,
         image = image,
         audio = audio,
+        // ADICIONADO: Novos campos para vídeos e arquivos
+        video = video,
+        file = file,
+        fileName = fileName,
+        fileSize = fileSize,
+        mimeType = mimeType,
+        // FIM ADICIONADO
         createdAt = createdAt,
         senderId = senderId,
         senderName = senderName,

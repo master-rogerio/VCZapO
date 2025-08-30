@@ -73,4 +73,58 @@ class FirebaseStorageRepository @Inject constructor(
             // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
+
+    // ADICIONADO: Upload de vídeos
+    suspend fun uploadVideo(videoUri: Uri, username: String): String? {
+        return try {
+            val fileName = "chatMedia/${username}_${System.currentTimeMillis()}.mp4"
+            val storageRef = firebaseStorage.reference.child(fileName)
+            
+            Log.d(tag, "Iniciando upload de vídeo: $fileName")
+            
+            val uploadTask = storageRef.putFile(videoUri).await()
+            
+            if (uploadTask.task.isSuccessful) {
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                Log.d(tag, "Upload de vídeo concluído com sucesso: $downloadUrl")
+                downloadUrl
+            } else {
+                Log.e(tag, "Upload de vídeo falhou: ${uploadTask.task.exception?.message}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Erro ao fazer upload do vídeo: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+            null
+        }
+    }
+
+    // ADICIONADO: Upload de arquivos genéricos
+    suspend fun uploadFile(fileUri: Uri, username: String, fileName: String): String? {
+        return try {
+            val sanitizedFileName = fileName.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
+            val storagePath = "chatFiles/${username}_${System.currentTimeMillis()}_$sanitizedFileName"
+            val storageRef = firebaseStorage.reference.child(storagePath)
+            
+            Log.d(tag, "Iniciando upload de arquivo: $storagePath")
+            
+            val uploadTask = storageRef.putFile(fileUri).await()
+            
+            if (uploadTask.task.isSuccessful) {
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                Log.d(tag, "Upload de arquivo concluído com sucesso: $downloadUrl")
+                downloadUrl
+            } else {
+                Log.e(tag, "Upload de arquivo falhou: ${uploadTask.task.exception?.message}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Erro ao fazer upload do arquivo: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+            null
+        }
+    }
+    // FIM ADICIONADO
 }

@@ -19,6 +19,12 @@ import com.pdm.vczap_o.chatRoom.domain.SendImageMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendTextMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UpdateMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UploadImageUseCase
+// ADICIONADO: Imports para novos use cases
+import com.pdm.vczap_o.chatRoom.domain.UploadVideoUseCase
+import com.pdm.vczap_o.chatRoom.domain.UploadFileUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendVideoMessageUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendFileMessageUseCase
+// FIM ADICIONADO
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.model.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,6 +50,12 @@ class ChatViewModel @Inject constructor(
     private val sendImageMessageUseCase: SendImageMessageUseCase,
     // REMOVIDO: private val sendLocationMessageUseCase: SendLocationMessageUseCase,
     private val uploadImageUseCase: UploadImageUseCase,
+    // ADICIONADO: Use cases para upload de vídeos e arquivos
+    private val uploadVideoUseCase: UploadVideoUseCase,
+    private val uploadFileUseCase: UploadFileUseCase,
+    private val sendVideoMessageUseCase: SendVideoMessageUseCase,
+    private val sendFileMessageUseCase: SendFileMessageUseCase,
+    // FIM ADICIONADO
     private val addReactionUseCase: AddReactionUseCase,
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
     private val audioRecordingUseCase: AudioRecordingUseCase,
@@ -300,8 +312,17 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "  - SenderId: $currentUserId")
                 Log.d(tag, "  - OtherUserId: $validOtherUserId")
                 
-                // TODO: Implementar SendVideoMessageUseCase
-                // sendVideoMessageUseCase(...)
+                // ALTERAÇÃO: Implementar SendVideoMessageUseCase
+                sendVideoMessageUseCase(
+                    caption = caption,
+                    videoUrl = videoUrl,
+                    senderName = senderName,
+                    roomId = roomId,
+                    senderId = currentUserId,
+                    otherUserId = validOtherUserId,
+                    profileUrl = profileUrl,
+                    recipientsToken = recipientsToken
+                )
                 
                 Log.d(tag, "Envio de vídeo concluído com sucesso")
             } catch (e: Exception) {
@@ -313,21 +334,91 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    // ADICIONADO: Método para envio de arquivos genéricos
+    fun sendFileMessage(
+        caption: String,
+        fileUrl: String,
+        fileName: String,
+        fileSize: Long,
+        mimeType: String,
+        senderName: String,
+        roomId: String,
+        currentUserId: String,
+        profileUrl: String,
+        recipientsToken: String,
+    ) {
+        viewModelScope.launch {
+            try {
+                // Verificar se otherUserId não é null antes de enviar
+                val validOtherUserId = otherUserId
+                if (validOtherUserId.isNullOrBlank()) {
+                    logger(tag, "Erro: otherUserId é null ou vazio ao enviar arquivo")
+                    _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                    return@launch
+                }
+                
+                // Logs detalhados para debug do envio de arquivo
+                Log.d(tag, "Iniciando envio de arquivo:")
+                Log.d(tag, "  - Caption: $caption")
+                Log.d(tag, "  - FileUrl: $fileUrl")
+                Log.d(tag, "  - FileName: $fileName")
+                Log.d(tag, "  - FileSize: $fileSize")
+                Log.d(tag, "  - MimeType: $mimeType")
+                Log.d(tag, "  - RoomId: $roomId")
+                Log.d(tag, "  - SenderId: $currentUserId")
+                Log.d(tag, "  - OtherUserId: $validOtherUserId")
+                
+                sendFileMessageUseCase(
+                    caption = caption,
+                    fileUrl = fileUrl,
+                    fileName = fileName,
+                    fileSize = fileSize,
+                    mimeType = mimeType,
+                    senderName = senderName,
+                    roomId = roomId,
+                    senderId = currentUserId,
+                    otherUserId = validOtherUserId,
+                    profileUrl = profileUrl,
+                    recipientsToken = recipientsToken
+                )
+                
+                Log.d(tag, "Envio de arquivo concluído com sucesso")
+            } catch (e: Exception) {
+                logger(tag, "Erro ao enviar mensagem de arquivo: ${e.message}")
+                logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                logger(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                _chatState.value = ChatState.Error("Falha ao enviar arquivo: ${e.message}")
+            }
+        }
+    }
+    // FIM ADICIONADO
+
     suspend fun uploadImage(imageUri: Uri, username: String): String? {
         return uploadImageUseCase(imageUri, username)
     }
     
     suspend fun uploadVideo(videoUri: Uri, username: String): String? {
-        // TODO: Implementar UploadVideoUseCase
+        // ALTERAÇÃO: Implementar UploadVideoUseCase
         return try {
             Log.d(tag, "Upload de vídeo iniciado para: $videoUri")
-            // return uploadVideoUseCase(videoUri, username)
-            null // Temporário até implementar o use case
+            uploadVideoUseCase(videoUri, username)
         } catch (e: Exception) {
             Log.e(tag, "Erro no upload de vídeo: ${e.message}")
             null
         }
     }
+
+    // ADICIONADO: Método para upload de arquivos genéricos
+    suspend fun uploadFile(fileUri: Uri, username: String, fileName: String): String? {
+        return try {
+            Log.d(tag, "Upload de arquivo iniciado para: $fileUri")
+            uploadFileUseCase(fileUri, username, fileName)
+        } catch (e: Exception) {
+            Log.e(tag, "Erro no upload de arquivo: ${e.message}")
+            null
+        }
+    }
+    // FIM ADICIONADO
 
     fun addReactionToMessage(
         roomId: String,

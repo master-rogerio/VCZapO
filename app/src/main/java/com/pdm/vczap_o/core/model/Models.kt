@@ -35,6 +35,13 @@ data class ChatMessage(
     var content: String = "",
     var image: String? = null,
     var audio: String? = null,
+    // ADICIONADO: Suporte para vídeos e arquivos genéricos
+    var video: String? = null,
+    var file: String? = null,
+    var fileName: String? = null,
+    var fileSize: Long? = null,
+    var mimeType: String? = null,
+    // FIM ADICIONADO
     var createdAt: Date = Date(),
     var senderId: String = "",
     var senderName: String = "",

@@ -324,6 +324,208 @@ class SendMessageRepository @Inject constructor(
     }
 
     /**
+     * Envia uma mensagem de vídeo criptografada
+     */
+    suspend fun sendVideoMessage(
+        roomId: String,
+        content: String,
+        senderId: String,
+        senderName: String,
+        videoUrl: String,
+        otherUserId: String
+    ): Result<Unit> {
+        return try {
+            // Validação de entrada
+            if (!EnhancedCryptoUtils.isValidUserId(senderId) ||
+                !EnhancedCryptoUtils.isValidUserId(otherUserId)) {
+                throw IllegalArgumentException("IDs de usuário inválidos")
+            }
+
+            if (videoUrl.isBlank()) {
+                throw IllegalArgumentException("URL do vídeo inválida")
+            }
+
+            val sanitizedContent = EnhancedCryptoUtils.sanitizeString(content)
+
+            // Verifica se o usuário tem chaves inicializadas
+            if (!cryptoService.isUserInitialized(senderId)) {
+                val initialized = cryptoService.initializeUserKeys(senderId)
+                if (!initialized) {
+                    throw Exception("Falha ao inicializar chaves de criptografia")
+                }
+            }
+
+            // Estabelece sessão se necessário
+            var userKeys = homeRepository.getUserKeys(otherUserId)
+            
+            if (userKeys == null) {
+                Log.d(tag, "Chaves do usuário $otherUserId não encontradas para vídeo, tentando inicializar")
+                val otherUserInitialized = cryptoService.initializeUserKeys(otherUserId)
+                if (otherUserInitialized) {
+                    kotlinx.coroutines.delay(1000)
+                    userKeys = homeRepository.getUserKeys(otherUserId)
+                }
+                
+                if (userKeys == null) {
+                    throw Exception("Não foi possível obter as chaves do usuário $otherUserId. O usuário precisa abrir o app primeiro.")
+                }
+            }
+
+            val preKeyBundle = EnhancedCryptoUtils.parsePreKeyBundle(userKeys)
+            val sessionEstablished = cryptoService.establishSession(senderId, otherUserId, preKeyBundle)
+            if (!sessionEstablished) {
+                throw Exception("Falha ao estabelecer sessão segura com $otherUserId")
+            }
+
+            // Criptografa a descrição do vídeo
+            val encryptedMessage = cryptoService.encryptMessage(senderId, otherUserId, sanitizedContent)
+                ?: throw Exception("Falha ao criptografar descrição do vídeo")
+
+            val encryptedContent = Base64.encodeToString(encryptedMessage.content, Base64.NO_WRAP)
+
+            Log.d(tag, "Enviando mensagem de vídeo criptografada para roomId=$roomId")
+
+            val messageData = hashMapOf(
+                "content" to encryptedContent,
+                "createdAt" to Timestamp.now(),
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "type" to "video",
+                "read" to false,
+                "delivered" to false,
+                "video" to videoUrl,
+                "encryptionType" to encryptedMessage.type,
+                "timestamp" to encryptedMessage.timestamp
+            )
+
+            firestore.collection("rooms").document(roomId).collection("messages")
+                .add(messageData).await()
+
+            updateRoomLastMessage(roomId, "🎥 ${sanitizedContent.ifBlank { "Vídeo" }}", senderId)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao enviar vídeo: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Envia uma mensagem de arquivo genérico criptografada
+     */
+    suspend fun sendFileMessage(
+        roomId: String,
+        content: String,
+        senderId: String,
+        senderName: String,
+        fileUrl: String,
+        fileName: String,
+        fileSize: Long,
+        mimeType: String,
+        otherUserId: String
+    ): Result<Unit> {
+        return try {
+            // Validação de entrada
+            if (!EnhancedCryptoUtils.isValidUserId(senderId) ||
+                !EnhancedCryptoUtils.isValidUserId(otherUserId)) {
+                throw IllegalArgumentException("IDs de usuário inválidos")
+            }
+
+            if (fileUrl.isBlank()) {
+                throw IllegalArgumentException("URL do arquivo inválida")
+            }
+
+            if (fileName.isBlank()) {
+                throw IllegalArgumentException("Nome do arquivo inválido")
+            }
+
+            val sanitizedContent = EnhancedCryptoUtils.sanitizeString(content)
+            val sanitizedFileName = EnhancedCryptoUtils.sanitizeString(fileName)
+
+            // Verifica se o usuário tem chaves inicializadas
+            if (!cryptoService.isUserInitialized(senderId)) {
+                val initialized = cryptoService.initializeUserKeys(senderId)
+                if (!initialized) {
+                    throw Exception("Falha ao inicializar chaves de criptografia")
+                }
+            }
+
+            // Estabelece sessão se necessário
+            var userKeys = homeRepository.getUserKeys(otherUserId)
+            
+            if (userKeys == null) {
+                Log.d(tag, "Chaves do usuário $otherUserId não encontradas para arquivo, tentando inicializar")
+                val otherUserInitialized = cryptoService.initializeUserKeys(otherUserId)
+                if (otherUserInitialized) {
+                    kotlinx.coroutines.delay(1000)
+                    userKeys = homeRepository.getUserKeys(otherUserId)
+                }
+                
+                if (userKeys == null) {
+                    throw Exception("Não foi possível obter as chaves do usuário $otherUserId. O usuário precisa abrir o app primeiro.")
+                }
+            }
+
+            val preKeyBundle = EnhancedCryptoUtils.parsePreKeyBundle(userKeys)
+            val sessionEstablished = cryptoService.establishSession(senderId, otherUserId, preKeyBundle)
+            if (!sessionEstablished) {
+                throw Exception("Falha ao estabelecer sessão segura com $otherUserId")
+            }
+
+            // Criptografa a descrição do arquivo
+            val encryptedMessage = cryptoService.encryptMessage(senderId, otherUserId, sanitizedContent)
+                ?: throw Exception("Falha ao criptografar descrição do arquivo")
+
+            val encryptedContent = Base64.encodeToString(encryptedMessage.content, Base64.NO_WRAP)
+
+            Log.d(tag, "Enviando mensagem de arquivo criptografada para roomId=$roomId")
+
+            val messageData = hashMapOf(
+                "content" to encryptedContent,
+                "createdAt" to Timestamp.now(),
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "type" to "file",
+                "read" to false,
+                "delivered" to false,
+                "file" to fileUrl,
+                "fileName" to sanitizedFileName,
+                "fileSize" to fileSize,
+                "mimeType" to mimeType,
+                "encryptionType" to encryptedMessage.type,
+                "timestamp" to encryptedMessage.timestamp
+            )
+
+            firestore.collection("rooms").document(roomId).collection("messages")
+                .add(messageData).await()
+
+            // Determina o ícone baseado no tipo MIME
+            val fileIcon = when {
+                mimeType.startsWith("application/pdf") -> "📄"
+                mimeType.startsWith("application/zip") || mimeType.startsWith("application/x-zip") -> "🗜️"
+                mimeType.startsWith("application/vnd.openxmlformats-officedocument.wordprocessingml.document") -> "📝"
+                mimeType.startsWith("application/msword") -> "📝"
+                mimeType.startsWith("application/vnd.ms-excel") || mimeType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") -> "📊"
+                mimeType.startsWith("application/vnd.ms-powerpoint") || mimeType.startsWith("application/vnd.openxmlformats-officedocument.presentationml.presentation") -> "📈"
+                else -> "📎"
+            }
+
+            val displayText = if (sanitizedContent.isNotBlank()) {
+                "$fileIcon $sanitizedContent"
+            } else {
+                "$fileIcon $sanitizedFileName"
+            }
+
+            updateRoomLastMessage(roomId, displayText, senderId)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao enviar arquivo: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Publica as chaves públicas de um usuário no Firebase
      */
     suspend fun publishUserKeys(userId: String): Result<Unit> {
