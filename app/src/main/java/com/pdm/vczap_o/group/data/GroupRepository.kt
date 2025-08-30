@@ -2,21 +2,19 @@ package com.pdm.vczap_o.group.data
 
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.pdm.vczap_o.group.data.model.Group // <-- IMPORT CORRIGIDO
+import com.google.firebase.firestore.toObjects
+import com.pdm.vczap_o.group.data.model.Group
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class GroupRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
-
     private val groupsCollection = firestore.collection("groups")
 
-    /**
-     * Cria um novo documento de grupo na coleção 'groups' do Firestore.
-     * @param group O objeto Group a ser salvo.
-     * @return Um Result indicando sucesso ou falha na operação.
-     */
     suspend fun createGroup(group: Group): Result<Unit> {
         return try {
             groupsCollection.document(group.id).set(group).await()
@@ -26,16 +24,20 @@ class GroupRepository @Inject constructor(
         }
     }
 
-    /**
-     * Adiciona um novo membro a um grupo existente.
-     * @param groupId O ID do grupo a ser modificado.
-     * @param userId O ID do usuário a ser adicionado.
-     * @return Um Result indicando sucesso ou falha na operação.
-     */
     suspend fun addMember(groupId: String, userId: String): Result<Unit> {
         return try {
-            groupsCollection.document(groupId)
-                .update("members", FieldValue.arrayUnion(userId)).await()
+            groupsCollection.document(groupId).update("members", FieldValue.arrayUnion(userId))
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
+        return try {
+            groupsCollection.document(groupId).update("members", FieldValue.arrayRemove(userId))
+                .await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -43,19 +45,23 @@ class GroupRepository @Inject constructor(
     }
 
     /**
-     * Remove um membro de um grupo existente.
-     * @param groupId O ID do grupo a ser modificado.
-     * @param userId O ID do usuário a ser removido.
-     * @return Um Result indicando sucesso ou falha na operação.
+     * Escuta em tempo real os grupos dos quais um usuário é membro.
      */
-    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            groupsCollection.document(groupId)
-                .update("members", FieldValue.arrayRemove(userId)).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    fun getGroups(userId: String): Flow<Result<List<Group>>> = callbackFlow {
+        val subscription = firestore.collection("groups")
+            .whereArrayContains("members", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val groups = snapshot.toObjects<Group>()
+                    trySend(Result.success(groups))
+                }
+            }
+        // Ao final, remove o listener para evitar memory leaks
+        awaitClose { subscription.remove() }
     }
 }
 

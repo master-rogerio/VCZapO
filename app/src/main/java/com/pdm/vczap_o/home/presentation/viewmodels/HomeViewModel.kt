@@ -10,6 +10,7 @@ import com.pdm.vczap_o.home.domain.usecase.GetFCMTokenUseCase
 import com.pdm.vczap_o.home.domain.usecase.GetUnreadMessagesUseCase
 import com.pdm.vczap_o.home.domain.usecase.ListenToRoomsUseCase
 import com.google.firebase.auth.FirebaseAuth
+import com.pdm.vczap_o.group.domain.usecase.GetGroupsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,9 @@ class HomeViewModel @Inject constructor(
     private val getUnreadMessagesUseCase: GetUnreadMessagesUseCase,
     private val getFCMTokenUseCase: GetFCMTokenUseCase,
     private val listenToRoomsUseCase: ListenToRoomsUseCase,
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private val getGroupsUseCase: GetGroupsUseCase,
+    // FIM DA ADIÇÃO - PASSO 5
     context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -30,6 +34,9 @@ class HomeViewModel @Inject constructor(
     private val cacheHelper = RoomsCache(context = context)
     private val auth = FirebaseAuth.getInstance()
     private var roomsListenerJob = viewModelScope.launch { } // Initialize an empty job
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private var groupsListenerJob = viewModelScope.launch { }
+    // FIM DA ADIÇÃO - PASSO 5
     val uiState: StateFlow<HomeUiState> = _uiState
 
     private fun loadCachedRooms() {
@@ -47,10 +54,11 @@ class HomeViewModel @Inject constructor(
 
     init {
         if (auth.currentUser != null) {
-            // ALTERAÇÃO 28/08/2025 R - Carrega salas do cache primeiro, depois escuta mudanças
             loadCachedRooms()
             listenToRooms()
-            // FIM ALTERAÇÃO 28/08/2025 R
+            // INÍCIO DA ADIÇÃO - PASSO 5
+            listenToGroups()
+            // FIM DA ADIÇÃO - PASSO 5
         } else {
             _uiState.update { it.copy(error = "User not authenticated") }
         }
@@ -79,10 +87,8 @@ class HomeViewModel @Inject constructor(
             try {
                 listenToRoomsUseCase(userId).collectLatest { result ->
                     result.onSuccess { roomsList ->
-                        // ALTERAÇÃO 28/08/2025 R - Atualiza estado e salva no cache
                         _uiState.update { it.copy(rooms = roomsList, isLoading = false, error = null) }
-                        
-                        // Salva as salas no cache para uso offline
+
                         viewModelScope.launch {
                             try {
                                 cacheHelper.saveRooms(roomsList)
@@ -91,9 +97,8 @@ class HomeViewModel @Inject constructor(
                                 logger(tag, "Error saving rooms to cache: ${e.message}")
                             }
                         }
-                        
+
                         logger(tag, "Rooms updated: ${roomsList.size}")
-                        // FIM ALTERAÇÃO 28/08/2025 R
                     }
                     result.onFailure { error ->
                         _uiState.update {
@@ -117,13 +122,54 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private fun listenToGroups() {
+        val userId = auth.currentUser?.uid ?: run {
+            _uiState.update { it.copy(error = "User not authenticated") }
+            return
+        }
+
+        groupsListenerJob = viewModelScope.launch {
+            try {
+                getGroupsUseCase(userId).collectLatest { result ->
+                    result.onSuccess { groupsList ->
+                        _uiState.update { it.copy(groups = groupsList) }
+                        logger(tag, "Groups updated: ${groupsList.size}")
+                    }
+                    result.onFailure { error ->
+                        _uiState.update {
+                            it.copy(error = "Failed to load groups: ${error.message}")
+                        }
+                        logger(tag, "Failed to load groups: ${error.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "Error in groups listener: ${e.message}")
+                }
+                logger(tag, "Error in groups listener: ${e.message}")
+            }
+        }
+    }
+    // FIM DA ADIÇÃO - PASSO 5
+
     fun retryLoadRooms() {
         roomsListenerJob.cancel()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        groupsListenerJob.cancel()
+        // FIM DA ADIÇÃO - PASSO 5
         listenToRooms()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        listenToGroups()
+        // FIM DA ADIÇÃO - PASSO 5
     }
 
     override fun onCleared() {
         roomsListenerJob.cancel()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        groupsListenerJob.cancel()
+        // FIM DA ADIÇÃO - PASSO 5
         super.onCleared()
     }
 }
+

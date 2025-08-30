@@ -7,6 +7,11 @@ import com.pdm.vczap_o.chatRoom.data.local.ChatDatabase
 import com.pdm.vczap_o.chatRoom.data.local.MessageDao
 import com.pdm.vczap_o.core.data.dataStore
 import com.pdm.vczap_o.cripto.CryptoService
+import com.pdm.vczap_o.group.data.GroupRepository
+import com.pdm.vczap_o.group.domain.usecase.AddMemberUseCase
+import com.pdm.vczap_o.group.domain.usecase.CreateGroupUseCase
+import com.pdm.vczap_o.group.domain.usecase.GetGroupsUseCase
+import com.pdm.vczap_o.group.domain.usecase.RemoveMemberUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -61,4 +66,48 @@ object AppModule {
     fun provideCryptoService(@ApplicationContext appContext: Context): CryptoService {
         return CryptoService(appContext)
     }
+
+
+    // ------------------ GRUPOS ------------------
+    @Provides
+    @Singleton
+    fun providesGroupRepository(
+        firestore: FirebaseFirestore
+    ): GroupRepository {
+        return GroupRepository(firestore)
+    }
+
+    @Provides
+    @Singleton
+    fun providesCreateGroupUseCase(
+        groupRepository: GroupRepository
+    ): CreateGroupUseCase {
+        return CreateGroupUseCase(groupRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun providesAddMemberUseCase(
+        groupRepository: GroupRepository
+    ): AddMemberUseCase {
+        return AddMemberUseCase(groupRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun providesRemoveMemberUseCase(
+        groupRepository: GroupRepository
+    ): RemoveMemberUseCase {
+        return RemoveMemberUseCase(groupRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun providesGetGroupsUseCase(
+        groupRepository: GroupRepository
+    ): GetGroupsUseCase {
+        return GetGroupsUseCase(groupRepository)
+    }
+    // ------------------------------------------
 }
+
