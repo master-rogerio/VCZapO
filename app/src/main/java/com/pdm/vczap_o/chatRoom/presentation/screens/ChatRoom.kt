@@ -65,9 +65,40 @@ import com.pdm.vczap_o.notifications.data.services.person
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.Gson
+import com.pdm.vczap_o.navigation.VideoPreviewScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
+import android.provider.OpenableColumns
+import android.database.Cursor
+import android.content.Context
+
+// Função helper para obter nome do arquivo
+private fun getFileName(context: Context, uri: Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        val cursor: Cursor? = context.contentResolver.query(uri, null, null, null, null)
+        try {
+            if (cursor != null && cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (nameIndex >= 0) {
+                    result = cursor.getString(nameIndex)
+                }
+            }
+        } finally {
+            cursor?.close()
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/')
+        if (cut != -1) {
+            result = result?.substring((cut ?: 0) + 1)
+        }
+    }
+    return result
+}
+
 
 @Composable
 fun ChatScreen(
@@ -133,6 +164,57 @@ fun ChatScreen(
             }
         }
     }
+
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Navegar para tela de preview de vídeo (criar similar ao ImagePreviewScreen)
+            val route = VideoPreviewScreen(
+                videoUri = it.toString(),
+                roomId = roomId,
+                profileUrl = userData?.profileUrl.orEmpty(),
+                recipientsToken = deviceToken,
+                currentUserId = currentUserId,
+                otherUserId = userId
+            )
+            navController.navigate(route)
+        }
+    }
+
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            // Obter nome do arquivo
+            val fileName = getFileName(context, selectedUri) ?: "document"
+
+            coroutineScope.launch {
+                try {
+                    // Upload do documento
+                    val documentUrl = chatViewModel.uploadDocument(selectedUri, userData?.username ?: "", fileName)
+
+                    if (documentUrl != null) {
+                        // Enviar mensagem de documento
+                        chatViewModel.sendDocumentMessage(
+                            fileName = fileName,
+                            documentUrl = documentUrl,
+                            senderName = userData?.username ?: "",
+                            profileUrl = profileUrl,
+                            recipientsToken = deviceToken,
+                            roomId = roomId,
+                            currentUserId = currentUserId
+                        )
+                    } else {
+                        Toast.makeText(context, "Falha no upload do documento", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erro: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
 
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -327,6 +409,12 @@ fun ChatScreen(
                                 messageText = ""
                             }
                         },
+                        onVideoClick = {
+                            videoPickerLauncher.launch("video/*")
+                        },
+                        onDocumentClick = {
+                            documentPickerLauncher.launch("*/*")  // ou tipos específicos: "application/pdf"
+                        },
                         onImageClick = { imagePickerLauncher.launch("image/*") },
                         isRecording = isRecording,
                         onRecordAudio = {
@@ -339,10 +427,6 @@ fun ChatScreen(
                             } else {
                                 audioPermissionLauncher.launch(audioPermission)
                             }
-                        },
-                        onVideoClick = {
-                            // TODO: Implementar seleção de vídeo
-                            // navController.navigate("video_picker/$roomId")
                         },
                         userData = userData,
                         roomId = roomId,

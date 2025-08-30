@@ -86,6 +86,27 @@ data class ImagePreviewScreen(
 )
 
 /**
+ * Represents the screen for previewing a video before sending.
+ * @param videoUri The URI of the video to be previewed.
+ * @param roomId The identifier of the chat room where the video will be sent.
+ * @param profileUrl The profile URL of the currentUser, used for display.
+ * @param recipientsToken The device token of the recipient, for notifications.
+ * @param currentUserId The ID of the current user.
+ * @param otherUserId The ID of the other user in the chat.
+ */
+@Serializable
+data class VideoPreviewScreen(
+    val videoUri: String,
+    val roomId: String,
+    val profileUrl: String = "",
+    val recipientsToken: String = "",
+    val currentUserId: String = "",
+    val otherUserId: String = ""
+)
+
+
+
+/**
  * Represents the camera screen integrated with CameraX.
  * @param roomId The identifier of the chat room the captured media will be associated with.
  * @param profileUrl The profile URL of the current user.

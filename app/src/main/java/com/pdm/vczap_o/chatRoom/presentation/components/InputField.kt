@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -61,6 +62,7 @@ fun MessageInput(
     onSend: () -> Unit,
     onImageClick: () -> Unit,
     onVideoClick: () -> Unit,
+    onDocumentClick: () -> Unit,
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
     roomId: String,
@@ -104,7 +106,7 @@ fun MessageInput(
         BasicTextField(
             value = messageText,
             onValueChange = onMessageChange,
-            maxLines = 1,
+            maxLines = 3,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
@@ -172,6 +174,17 @@ fun MessageInput(
                                     }
                                     .clickable(onClick = { onImageClick() })
                             )
+                            Icon(
+                                imageVector = Icons.Default.AttachFile,  // ou Icons.Default.Description
+                                contentDescription = "Add Document",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier
+                                    .graphicsLayer {
+                                        translationX = translate
+                                        alpha = homeIconAlpha
+                                    }
+                                    .clickable(onClick = { onDocumentClick() })
+                            )
                         }
                     }
                 }
@@ -224,6 +237,7 @@ fun PrevInputToolBar() {
         isRecording = false,
         onRecordAudio = {},
         onVideoClick = {},
+        onDocumentClick = {},
         roomId = "",
         userData = NewUser(),
         recipientToken = ""

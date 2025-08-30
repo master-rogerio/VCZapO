@@ -17,8 +17,12 @@ import com.pdm.vczap_o.chatRoom.domain.RemoveMessageListenerUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendImageMessageUseCase
 // REMOVIDO: import com.pdm.vczap_o.chatRoom.domain.SendLocationMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendTextMessageUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendVideoMessageUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendDocumentMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UpdateMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.UploadImageUseCase
+import com.pdm.vczap_o.chatRoom.domain.UploadVideoUseCase
+import com.pdm.vczap_o.chatRoom.domain.UploadDocumentUseCase
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.model.ChatMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,7 +47,11 @@ class ChatViewModel @Inject constructor(
     private val sendTextMessageUseCase: SendTextMessageUseCase,
     private val sendImageMessageUseCase: SendImageMessageUseCase,
     // REMOVIDO: private val sendLocationMessageUseCase: SendLocationMessageUseCase,
+    private val sendVideoMessageUseCase: SendVideoMessageUseCase,
+    private val sendDocumentMessageUseCase: SendDocumentMessageUseCase,
     private val uploadImageUseCase: UploadImageUseCase,
+    private val uploadVideoUseCase: UploadVideoUseCase,
+    private val uploadDocumentUseCase: UploadDocumentUseCase,
     private val addReactionUseCase: AddReactionUseCase,
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
     private val audioRecordingUseCase: AudioRecordingUseCase,
@@ -281,6 +289,7 @@ class ChatViewModel @Inject constructor(
         currentUserId: String,
         profileUrl: String,
         recipientsToken: String,
+        otherUserId: String
     ) {
         viewModelScope.launch {
             try {
@@ -299,9 +308,17 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "  - RoomId: $roomId")
                 Log.d(tag, "  - SenderId: $currentUserId")
                 Log.d(tag, "  - OtherUserId: $validOtherUserId")
-                
-                // TODO: Implementar SendVideoMessageUseCase
-                // sendVideoMessageUseCase(...)
+
+                sendVideoMessageUseCase(
+                    caption = caption,
+                    videoUrl = videoUrl,
+                    senderName = senderName,
+                    roomId = roomId,
+                    senderId = currentUserId,
+                    otherUserId = validOtherUserId,
+                    profileUrl = profileUrl,
+                    recipientsToken = recipientsToken
+                )
                 
                 Log.d(tag, "Envio de vídeo concluído com sucesso")
             } catch (e: Exception) {
@@ -316,18 +333,76 @@ class ChatViewModel @Inject constructor(
     suspend fun uploadImage(imageUri: Uri, username: String): String? {
         return uploadImageUseCase(imageUri, username)
     }
-    
+
     suspend fun uploadVideo(videoUri: Uri, username: String): String? {
-        // TODO: Implementar UploadVideoUseCase
         return try {
             Log.d(tag, "Upload de vídeo iniciado para: $videoUri")
-            // return uploadVideoUseCase(videoUri, username)
-            null // Temporário até implementar o use case
+            val result = uploadVideoUseCase(videoUri, username)
+            Log.d(tag, "Upload de vídeo concluído: $result")
+            result // CORREÇÃO: Retorna o resultado do upload (estava retornando null)
         } catch (e: Exception) {
             Log.e(tag, "Erro no upload de vídeo: ${e.message}")
+            Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
             null
         }
     }
+
+    suspend fun uploadDocument(documentUri: Uri, username: String, fileName: String): String? {
+        return try {
+            Log.d(tag, "Upload de documento iniciado para: $documentUri")
+            uploadDocumentUseCase(documentUri, username, fileName)
+        } catch (e: Exception) {
+            Log.e(tag, "Erro no upload de documento: ${e.message}")
+            null
+        }
+    }
+
+    fun sendDocumentMessage(
+        fileName: String,
+        documentUrl: String,
+        senderName: String,
+        profileUrl: String,
+        recipientsToken: String,
+        roomId: String,
+        currentUserId: String,
+    ) {
+        viewModelScope.launch {
+            try {
+                // CORREÇÃO: Usar os parâmetros passados diretamente
+                val validOtherUserId = otherUserId // Usar a propriedade da classe
+                if (validOtherUserId.isNullOrBlank()) {
+                    logger(tag, "Erro: otherUserId é null ou vazio ao enviar documento")
+                    _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                    return@launch
+                }
+
+                Log.d(tag, "Iniciando envio de documento:")
+                Log.d(tag, "  - FileName: $fileName")
+                Log.d(tag, "  - DocumentUrl: $documentUrl")
+                Log.d(tag, "  - RoomId: $roomId")
+                Log.d(tag, "  - SenderId: $currentUserId")
+                Log.d(tag, "  - OtherUserId: $validOtherUserId")
+
+                sendDocumentMessageUseCase(
+                    fileName = fileName,
+                    documentUrl = documentUrl,
+                    senderName = senderName,
+                    roomId = roomId, // CORREÇÃO: Usar o parâmetro passado
+                    senderId = currentUserId, // CORREÇÃO: Usar o parâmetro passado
+                    otherUserId = validOtherUserId,
+                    profileUrl = profileUrl,
+                    recipientsToken = recipientsToken
+                )
+
+                Log.d(tag, "Envio de documento concluído com sucesso")
+            } catch (e: Exception) {
+                logger(tag, "Erro ao enviar mensagem de documento: ${e.message}")
+                logger(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                _chatState.value = ChatState.Error("Falha ao enviar documento: ${e.message}")
+            }
+        }
+    }
+
 
     fun addReactionToMessage(
         roomId: String,

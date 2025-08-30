@@ -30,6 +30,7 @@ import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
 import com.google.gson.Gson
+import com.pdm.vczap_o.chatRoom.presentation.screens.VideoPreviewScreen
 
 @Composable
 fun ChatAppNavigation() {
@@ -123,6 +124,26 @@ fun ChatAppNavigation() {
                 imageUri = args.imageUri.toUri(),
                 roomId = args.roomId,
                 takenFromCamera = args.takenFromCamera.toString(),
+                profileUrl = args.profileUrl,
+                recipientsToken = args.recipientsToken,
+                currentUserId = args.currentUserId,
+                otherUserId = args.otherUserId
+            )
+        }
+
+        composable<VideoPreviewScreen>(
+            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }
+        ) {
+            val args = it.toRoute<VideoPreviewScreen>()
+            if (args.videoUri.isEmpty()) {
+                showToast(context, "An error occurred, Invalid video format")
+                return@composable
+            }
+            VideoPreviewScreen(
+                navController = navController,
+                chatViewModel = chatViewModel,
+                videoUri = args.videoUri.toUri(),
+                roomId = args.roomId,
                 profileUrl = args.profileUrl,
                 recipientsToken = args.recipientsToken,
                 currentUserId = args.currentUserId,

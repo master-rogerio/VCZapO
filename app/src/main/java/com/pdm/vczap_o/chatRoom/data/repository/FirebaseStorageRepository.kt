@@ -73,4 +73,62 @@ class FirebaseStorageRepository @Inject constructor(
             // FIM ALTERAÇÃO 28/08/2025 R
         }
     }
+
+    suspend fun uploadVideo(videoUri: Uri, username: String): String? {
+        return try {
+            val fileName = "chatVideos/${username}_${System.currentTimeMillis()}.mp4"
+            val storageRef = firebaseStorage.reference.child(fileName)
+
+            Log.d(tag, "Iniciando upload de vídeo: $fileName")
+
+            val uploadTask = storageRef.putFile(videoUri).await()
+
+            if (uploadTask.task.isSuccessful) {
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                Log.d(tag, "Upload de vídeo concluído: $downloadUrl")
+                downloadUrl
+            } else {
+                Log.e(tag, "Upload de vídeo falhou: ${uploadTask.task.exception?.message}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Erro ao fazer upload do vídeo: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun uploadDocument(documentUri: Uri, username: String, fileName: String): String? {
+        return try {
+            // Validação de segurança - bloquear arquivos perigosos
+            val extension = fileName.substringAfterLast('.', "").lowercase()
+            val blockedExtensions = listOf("exe", "bat", "cmd", "scr", "com", "pif", "vbs", "js", "jar", "apk")
+
+            if (extension in blockedExtensions) {
+                Log.w(tag, "Tipo de arquivo bloqueado por segurança: $extension")
+                return null
+            }
+
+            val safeFileName = "chatDocuments/${username}_${System.currentTimeMillis()}_${fileName}"
+            val storageRef = firebaseStorage.reference.child(safeFileName)
+
+            Log.d(tag, "Iniciando upload de documento: $safeFileName")
+
+            val uploadTask = storageRef.putFile(documentUri).await()
+
+            if (uploadTask.task.isSuccessful) {
+                val downloadUrl = storageRef.downloadUrl.await().toString()
+                Log.d(tag, "Upload de documento concluído: $downloadUrl")
+                downloadUrl
+            } else {
+                Log.e(tag, "Upload de documento falhou: ${uploadTask.task.exception?.message}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(tag, "Erro ao fazer upload do documento: ${e.message}")
+            null
+        }
+    }
+
+
+
 }
