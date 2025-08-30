@@ -36,6 +36,8 @@ import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.AudioMessag
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.ImageMessage
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.LocationMessage
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.TextMessage
+import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.VideoMessage
+import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.FileMessage
 import com.pdm.vczap_o.chatRoom.presentation.utils.vibrateDevice
 import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.mock.messageExample
@@ -199,6 +201,28 @@ fun ChatMessageObject(
                     "location" -> {
                         LocationMessage(
                             message = message,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
+                    "video" -> {
+                        VideoMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            fontSize = fontSize,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
+                    "file" -> {
+                        FileMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            fontSize = fontSize,
                             showPopUp = {
                                 showPopup = !showPopup
                             }

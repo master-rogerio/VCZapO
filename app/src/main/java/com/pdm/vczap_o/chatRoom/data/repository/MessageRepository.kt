@@ -154,6 +154,13 @@ class MessageRepository @Inject constructor(
             content = content,
             image = data["image"] as? String,
             audio = data["audio"] as? String,
+            // ADICIONADO: Campos para vídeos e arquivos
+            video = data["video"] as? String,
+            file = data["file"] as? String,
+            fileName = data["fileName"] as? String,
+            fileSize = (data["fileSize"] as? Number)?.toLong(),
+            mimeType = data["mimeType"] as? String,
+            // FIM ADICIONADO
             createdAt = (data["createdAt"] as? Timestamp)?.toDate() ?: java.util.Date(),
             senderId = senderId,
             senderName = data["senderName"] as? String ?: "",
