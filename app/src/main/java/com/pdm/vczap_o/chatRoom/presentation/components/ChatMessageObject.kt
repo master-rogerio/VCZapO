@@ -38,6 +38,7 @@ import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.LocationMes
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.TextMessage
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.VideoMessage
 import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.FileMessage
+import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.StickerMessage
 import com.pdm.vczap_o.chatRoom.presentation.utils.vibrateDevice
 import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.mock.messageExample
@@ -65,8 +66,8 @@ fun ChatMessageObject(
 
     Row(
         modifier = modifier.padding(
-            end = if (!isFromMe && message.type == "image") 30.dp else 0.dp,
-            start = if (isFromMe && message.type == "image") 30.dp else 0.dp
+            end = if (!isFromMe && (message.type == "image" || message.type == "sticker")) 30.dp else 0.dp,
+            start = if (isFromMe && (message.type == "image" || message.type == "sticker")) 30.dp else 0.dp
         ), horizontalArrangement = if (isFromMe) Arrangement.End else Arrangement.Start
     ) {
 //        Action pop ups
@@ -160,6 +161,10 @@ fun ChatMessageObject(
                                         "a location"
                                     }
 
+                                    "sticker" -> {
+                                        "a sticker 🎭"
+                                    }
+
                                     else -> "\"${message.content}\""
                                 }
                             )
@@ -173,7 +178,7 @@ fun ChatMessageObject(
                     start = if (message.type == "text") 8.dp else 0.dp,
                     end = if (message.type == "text") 30.dp else 0.dp,
                     top = if (message.type == "text") 2.dp else 0.dp,
-                    bottom = 0.dp
+                    bottom = if (message.type == "sticker") 0.dp else 0.dp
                 ), verticalArrangement = Arrangement.spacedBy((-5).dp)
             ) {
                 when (message.type) {
@@ -229,6 +234,16 @@ fun ChatMessageObject(
                         )
                     }
 
+                    "sticker" -> {
+                        StickerMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
                     else -> {
                         TextMessage(message = message, isFromMe = isFromMe)
                     }
@@ -237,7 +252,7 @@ fun ChatMessageObject(
                 Row(
                     modifier = Modifier
                         .align(Alignment.End)
-                        .absoluteOffset(x = if (message.type == "text") 22.dp else 0.dp)
+                        .absoluteOffset(x = if (message.type == "text") 22.dp else if (message.type == "sticker") (-10).dp else 0.dp)
                 ) {
                     Text(
                         text = formatMessageTime(message.createdAt),

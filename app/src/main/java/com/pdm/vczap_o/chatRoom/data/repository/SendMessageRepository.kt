@@ -526,6 +526,105 @@ class SendMessageRepository @Inject constructor(
     }
 
     /**
+     * Envia uma mensagem de sticker criptografada
+     */
+    suspend fun sendStickerMessage(
+        roomId: String,
+        content: String,
+        senderId: String,
+        senderName: String,
+        recipientsToken: String,
+        otherUserId: String,
+        profileUrl: String
+    ): Result<Unit> {
+        return try {
+            // Validação de entrada
+            if (!EnhancedCryptoUtils.isValidUserId(senderId) ||
+                !EnhancedCryptoUtils.isValidUserId(otherUserId)) {
+                throw IllegalArgumentException("IDs de usuário inválidos")
+            }
+
+            val sanitizedContent = EnhancedCryptoUtils.sanitizeString(content)
+            if (sanitizedContent.isBlank()) {
+                throw IllegalArgumentException("Conteúdo do sticker inválido")
+            }
+
+            // Verifica se o usuário tem chaves inicializadas
+            if (!cryptoService.isUserInitialized(senderId)) {
+                Log.d(tag, "Inicializando chaves para usuário $senderId")
+                val initialized = cryptoService.initializeUserKeys(senderId)
+                if (!initialized) {
+                    throw Exception("Falha ao inicializar chaves de criptografia")
+                }
+            }
+
+            // Verifica se precisa estabelecer sessão
+            var userKeys = homeRepository.getUserKeys(otherUserId)
+            
+            // Se as chaves do outro usuário não existem, tenta inicializar e publicar
+            if (userKeys == null) {
+                Log.d(tag, "Chaves do usuário $otherUserId não encontradas, tentando inicializar")
+                val otherUserInitialized = cryptoService.initializeUserKeys(otherUserId)
+                if (otherUserInitialized) {
+                    // Aguarda um pouco e tenta novamente
+                    kotlinx.coroutines.delay(1000)
+                    userKeys = homeRepository.getUserKeys(otherUserId)
+                }
+                
+                if (userKeys == null) {
+                    throw Exception("Não foi possível obter as chaves do usuário $otherUserId. O usuário precisa abrir o app primeiro.")
+                }
+            }
+
+            val preKeyBundle = EnhancedCryptoUtils.parsePreKeyBundle(userKeys)
+
+            // Estabelece sessão se necessário
+            val sessionEstablished = cryptoService.establishSession(senderId, otherUserId, preKeyBundle)
+            if (!sessionEstablished) {
+                throw Exception("Falha ao estabelecer sessão segura com $otherUserId")
+            }
+
+            // Criptografa o sticker
+            val encryptedMessage = cryptoService.encryptMessage(senderId, otherUserId, sanitizedContent)
+                ?: throw Exception("Falha ao criptografar sticker")
+
+            val encryptedContent = Base64.encodeToString(encryptedMessage.content, Base64.NO_WRAP)
+
+            Log.d(tag, "Enviando sticker criptografado para roomId=$roomId")
+
+            val messageData = hashMapOf(
+                "content" to encryptedContent,
+                "createdAt" to Timestamp.now(),
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "type" to "sticker", // Tipo específico para stickers
+                "read" to false,
+                "delivered" to false,
+                "encryptionType" to encryptedMessage.type,
+                "timestamp" to encryptedMessage.timestamp,
+                "originalContent" to sanitizedContent // Para mensagens próprias
+            )
+
+            // Adiciona a mensagem criptografada ao Firestore
+            val addedDoc = firestore.collection("rooms").document(roomId).collection("messages")
+                .add(messageData).await()
+
+            Log.d(tag, "Sticker criptografado enviado com id=${addedDoc.id}")
+
+            // Atualiza a última mensagem da sala
+            updateRoomLastMessage(roomId, "🎭 Sticker", senderId)
+
+            // Verifica se precisa rotacionar chaves
+            cryptoService.checkAndRotateKeys(senderId)
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao enviar sticker: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Publica as chaves públicas de um usuário no Firebase
      */
     suspend fun publishUserKeys(userId: String): Result<Unit> {

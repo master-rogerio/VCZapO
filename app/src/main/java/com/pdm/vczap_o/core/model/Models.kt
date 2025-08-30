@@ -47,7 +47,7 @@ data class ChatMessage(
     var senderName: String = "",
     var replyTo: String? = null,
     var read: Boolean = false,
-    var type: String = "text",
+    var type: String = "text", // "text", "image", "audio", "video", "file", "sticker"
     var delivered: Boolean = false,
     var location: Location? = null,
     var duration: Long? = null,

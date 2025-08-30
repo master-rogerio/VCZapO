@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,7 +20,8 @@ fun MediaSelectionDialog(
     onDismiss: () -> Unit,
     onImageClick: () -> Unit,
     onVideoClick: () -> Unit,
-    onFileClick: () -> Unit
+    onFileClick: () -> Unit,
+    onEmojiStickerClick: () -> Unit
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -92,6 +94,25 @@ fun MediaSelectionDialog(
                     )
                     Text("Arquivo")
                 }
+                
+                // ADICIONADO: Botão para Emojis & Stickers
+                OutlinedButton(
+                    onClick = {
+                        onEmojiStickerClick()
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEmotions,
+                        contentDescription = "Selecionar Emoji ou Sticker",
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Emojis & Stickers")
+                }
+                // FIM ADICIONADO
                 
                 // Botão Cancelar
                 TextButton(

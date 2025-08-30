@@ -24,6 +24,7 @@ import com.pdm.vczap_o.chatRoom.domain.UploadVideoUseCase
 import com.pdm.vczap_o.chatRoom.domain.UploadFileUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendVideoMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendFileMessageUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendStickerMessageUseCase
 // FIM ADICIONADO
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.model.ChatMessage
@@ -55,6 +56,8 @@ class ChatViewModel @Inject constructor(
     private val uploadFileUseCase: UploadFileUseCase,
     private val sendVideoMessageUseCase: SendVideoMessageUseCase,
     private val sendFileMessageUseCase: SendFileMessageUseCase,
+    // ADICIONADO: Use case para envio de stickers
+    private val sendStickerMessageUseCase: SendStickerMessageUseCase,
     // FIM ADICIONADO
     private val addReactionUseCase: AddReactionUseCase,
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
@@ -416,6 +419,37 @@ class ChatViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e(tag, "Erro no upload de arquivo: ${e.message}")
             null
+        }
+    }
+    
+    // ADICIONADO: Método para envio de stickers
+    fun sendStickerMessage(
+        stickerContent: String,
+        senderName: String,
+        recipientsToken: String,
+        profileUrl: String,
+    ) {
+        viewModelScope.launch {
+            try {
+                roomId?.let { roomId ->
+                    currentUserId?.let { userId ->
+                        otherUserId?.let { otherUserId ->
+                            sendStickerMessageUseCase(
+                                roomId = roomId,
+                                stickerContent = stickerContent,
+                                senderId = userId,
+                                senderName = senderName,
+                                recipientsToken = recipientsToken,
+                                otherUserId = otherUserId,
+                                profileUrl = profileUrl
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                logger(tag, "Error sending sticker: $e")
+                _chatState.value = ChatState.Error("Failed to send sticker: ${e.message}")
+            }
         }
     }
     // FIM ADICIONADO
