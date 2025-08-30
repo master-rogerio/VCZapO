@@ -437,6 +437,40 @@ fun ChatScreen(
                         onFileClick = {
                             filePickerLauncher.launch("*/*")
                         },
+                        // ADICIONADO: Implementar envio de emojis como mensagens de texto normais
+                        onEmojiClick = { emoji ->
+                            chatViewModel.sendMessage(
+                                content = emoji,
+                                senderName = userData?.username ?: "",
+                                profileUrl = userData?.profileUrl ?: "",
+                                recipientsToken = deviceToken
+                            )
+                            vibrateDevice(context)
+                            val newMessage = NotificationCompat.MessagingStyle.Message(
+                                emoji, System.currentTimeMillis(), person
+                            )
+                            val hasMessages = ConversationHistoryManager.hasMessages(roomId)
+                            if (hasMessages) {
+                                ConversationHistoryManager.addMessage(roomId, newMessage)
+                            }
+                        },
+                        // ADICIONADO: Implementar envio de stickers como tipo específico
+                        onStickerClick = { sticker ->
+                            chatViewModel.sendStickerMessage(
+                                stickerContent = sticker,
+                                senderName = userData?.username ?: "",
+                                profileUrl = userData?.profileUrl ?: "",
+                                recipientsToken = deviceToken
+                            )
+                            vibrateDevice(context)
+                            val newMessage = NotificationCompat.MessagingStyle.Message(
+                                "🎭 Sticker", System.currentTimeMillis(), person
+                            )
+                            val hasMessages = ConversationHistoryManager.hasMessages(roomId)
+                            if (hasMessages) {
+                                ConversationHistoryManager.addMessage(roomId, newMessage)
+                            }
+                        },
                         // FIM ADICIONADO
                         userData = userData,
                         roomId = roomId,

@@ -30,6 +30,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.EmojiEmotions
 // ADICIONADO: Import para o novo componente
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -76,6 +77,9 @@ fun MessageInput(
     onVideoClick: () -> Unit,
     // ADICIONADO: Parâmetro para seleção de arquivos genéricos
     onFileClick: () -> Unit,
+    // ADICIONADO: Parâmetros para seleção de emojis e stickers separados
+    onEmojiClick: (String) -> Unit,
+    onStickerClick: (String) -> Unit,
     // FIM ADICIONADO
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
@@ -85,6 +89,8 @@ fun MessageInput(
 ) {
     // ADICIONADO: Estado para controlar o diálogo de seleção de mídia
     var showMediaDialog by remember { mutableStateOf(false) }
+    // ADICIONADO: Estado para controlar o emoji picker
+    var showEmojiPicker by remember { mutableStateOf(false) }
     // FIM ADICIONADO
     // REMOVIDO: Código de localização removido conforme solicitado
 //    Check if keyboard is shown
@@ -187,6 +193,18 @@ fun MessageInput(
                                 if (messageText.isBlank()) Text("Type a message")
                             }
                         }
+                        // ADICIONADO: Botão de emoji/sticker
+                        Icon(
+                            imageVector = Icons.Default.EmojiEmotions,
+                            contentDescription = "Selecionar Emoji",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = homeIconAlpha
+                                }
+                                .clickable(onClick = { showEmojiPicker = true })
+                                .padding(end = 8.dp)
+                        )
                         // ALTERAÇÃO: Substituir múltiplos botões por um único botão de mídia
                         Icon(
                             imageVector = Icons.Default.AttachFile,
@@ -244,7 +262,23 @@ fun MessageInput(
             onDismiss = { showMediaDialog = false },
             onImageClick = onImageClick,
             onVideoClick = onVideoClick,
-            onFileClick = onFileClick
+            onFileClick = onFileClick,
+            onEmojiStickerClick = { showEmojiPicker = true }
+        )
+    }
+    
+    // ADICIONADO: Emoji/Sticker picker para envio de emojis e stickers como mensagens
+    if (showEmojiPicker) {
+        EmojiStickerPickerDialog(
+            onEmojiSelected = { selectedEmoji ->
+                onEmojiClick(selectedEmoji)
+                showEmojiPicker = false
+            },
+            onStickerSelected = { selectedSticker ->
+                onStickerClick(selectedSticker)
+                showEmojiPicker = false
+            },
+            onDismiss = { showEmojiPicker = false }
         )
     }
     // FIM ADICIONADO
@@ -260,8 +294,10 @@ fun PrevInputToolBar() {
         isRecording = false,
         onRecordAudio = {},
         onVideoClick = {},
-        // ADICIONADO: Parâmetro para preview
+        // ADICIONADO: Parâmetros para preview
         onFileClick = {},
+        onEmojiClick = {},
+        onStickerClick = {},
         // FIM ADICIONADO
         roomId = "",
         userData = NewUser(),
