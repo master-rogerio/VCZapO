@@ -1,7 +1,6 @@
 package com.pdm.vczap_o.group.data.model
 
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.pdm.vczap_o.navigation.Model
 
 /**
  * Representa os dados de um grupo necessários para a UI.
@@ -15,15 +14,11 @@ data class Group(
 )
 
 /**
- * Representa um item no menu dropdown.
- * Definido aqui para evitar problemas de importação com o PopUpMenu.
+ * Representa um item no menu dropdown para a tela de grupo.
+ * Esta classe é agora autônoma e não depende de outros arquivos de modelo.
  */
 data class GroupDropMenu(
     val text: String,
     val icon: ImageVector? = null,
-) {
-    // Função para converter para o tipo que o PopUpMenu espera
-    fun toDropMenu(): Model.DropMenu {
-        return Model.DropMenu(text, icon)
-    }
-}
+)
+

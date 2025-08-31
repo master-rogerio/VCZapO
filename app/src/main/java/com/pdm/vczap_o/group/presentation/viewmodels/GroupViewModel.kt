@@ -3,6 +3,7 @@ package com.pdm.vczap_o.group.presentation.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.group.domain.usecase.CreateGroupUseCase
 import com.pdm.vczap_o.group.domain.usecase.GetGroupDetailsUseCase
 import com.pdm.vczap_o.group.presentation.state.GroupUiState
@@ -17,13 +18,11 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
-private val GroupUiState.message: String?
-
 @HiltViewModel
 class GroupViewModel @Inject constructor(
     private val createGroupUseCase: CreateGroupUseCase,
     private val getAllUsersUseCase: GetAllUsersUseCase,
-    private val getGroupDetailsUseCase: GetGroupDetailsUseCase, // NOVO
+    private val getGroupDetailsUseCase: GetGroupDetailsUseCase,
     private val auth: FirebaseAuth
 ) : ViewModel() {
 
@@ -33,8 +32,6 @@ class GroupViewModel @Inject constructor(
     init {
         loadAllUsers()
     }
-
-    // ... (código existente de create group, search, etc.)
 
     fun onGroupNameChange(name: String) {
         _uiState.update { it.copy(groupName = name) }
@@ -62,8 +59,8 @@ class GroupViewModel @Inject constructor(
             val result = getAllUsersUseCase()
             result.onSuccess { users ->
                 _uiState.update { it.copy(allUsers = users, isLoading = false) }
-            }.onFailure {
-                _uiState.update { it.copy(errorMessage = it.message, isLoading = false) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = error.message, isLoading = false) }
             }
         }
     }
@@ -78,12 +75,16 @@ class GroupViewModel @Inject constructor(
                 return@launch
             }
 
+            // CORRIGIDO: Convertendo a lista de IDs para o Map que o Firestore espera
             val memberIds = _uiState.value.selectedUsers.map { it.id } + currentUser.uid
-            val group = com.pdm.vczap_o.group.data.model.Group(
+            val membersMap = memberIds.distinct().associateWith { true }
+
+            // CORRIGIDO: Usando os nomes corretos dos parâmetros (photoUrl, members)
+            val group = Group(
                 id = UUID.randomUUID().toString(),
                 name = _uiState.value.groupName,
-                imageUrl = _uiState.value.groupImageUri ?: "",
-                memberIds = memberIds.distinct()
+                photoUrl = _uiState.value.groupImageUri ?: "",
+                members = membersMap
             )
 
             val result = createGroupUseCase(group)
@@ -95,13 +96,18 @@ class GroupViewModel @Inject constructor(
         }
     }
 
-    // NOVA FUNÇÃO
-    fun loadGroupDetails(groupId: String) {
+    // CORRIGIDO: Nome da função e lógica interna
+    fun getGroupDetails(groupId: String) {
         viewModelScope.launch {
             getGroupDetailsUseCase(groupId).collect { result ->
                 result.onSuccess { group ->
-                    _uiState.update { it.copy(currentGroup = group) }
-                    fetchMembersDetails(group.memberIds)
+                    _uiState.update {
+                        it.copy(
+                            groupName = group.name,
+                            groupImageUri = group.photoUrl
+                        )
+                    }
+                    fetchMembersDetails(group.members.keys.toList())
                 }.onFailure { error ->
                     _uiState.update { it.copy(errorMessage = error.message) }
                 }
@@ -109,15 +115,14 @@ class GroupViewModel @Inject constructor(
         }
     }
 
-    // NOVA FUNÇÃO AUXILIAR
+    // CORRIGIDO: Lógica interna
     private fun fetchMembersDetails(memberIds: List<String>) {
         viewModelScope.launch {
-            // Por enquanto, vamos usar o `getAllUsersUseCase` e filtrar.
-            // O ideal seria ter um `getUsersByIdsUseCase`.
             getAllUsersUseCase().onSuccess { allUsers ->
                 val members = allUsers.filter { it.id in memberIds }
-                _uiState.update { it.copy(groupMembers = members) }
+                _uiState.update { it.copy(members = members) }
             }
         }
     }
 }
+

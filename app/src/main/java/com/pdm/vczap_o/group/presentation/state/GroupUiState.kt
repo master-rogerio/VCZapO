@@ -13,7 +13,9 @@ data class GroupUiState(
     val groupCreated: Boolean = false,
     val errorMessage: String? = null,
 
-    // NOVAS PROPRIEDADES
+    // Propriedades para a tela de informações do grupo
     val currentGroup: Group? = null,
-    val groupMembers: List<User> = emptyList()
+    // CORRIGIDO: Renomeado de 'groupMembers' para 'members' para consistência
+    val members: List<User> = emptyList()
 )
+

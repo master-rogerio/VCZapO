@@ -31,7 +31,8 @@ fun MemberListItem(member: User) {
     ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
-                .data(member.imageUrl)
+                // CORRIGIDO: Usando a propriedade correta do seu modelo User
+                .data(member.profilePictureUrl)
                 .crossfade(true)
                 .build(),
             placeholder = painterResource(R.drawable.person),
@@ -46,3 +47,4 @@ fun MemberListItem(member: User) {
         // Futuramente, podemos adicionar um ícone de "admin" aqui.
     }
 }
+

@@ -27,7 +27,7 @@ import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.core.model.User
 import com.pdm.vczap_o.group.presentation.screens.CreateGroupScreen
-import com.pdm.vczap_o.group.presentation.screens.GroupInfoScreen
+import com.pdm.vczap_o.group.presentation.screens.GroupInfoScreen 
 import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
