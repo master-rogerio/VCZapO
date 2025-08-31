@@ -11,7 +11,8 @@ data class RoomData(
     var lastMessage: String = "",
     var lastMessageTimestamp: Timestamp?,
     var lastMessageSenderId: String = "",
-    var otherParticipant: User
+    var otherParticipant: User,
+    var pinnedMessageId: String? = null
 ) : Serializable
 
 data class User(

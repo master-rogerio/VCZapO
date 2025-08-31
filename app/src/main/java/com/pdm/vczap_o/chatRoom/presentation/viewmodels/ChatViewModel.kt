@@ -1,5 +1,8 @@
 package com.pdm.vczap_o.chatRoom.presentation.viewmodels
 
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -36,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.pdm.vczap_o.home.data.RoomRepository
 
 sealed class ChatState {
     object Loading : ChatState()
@@ -71,6 +75,7 @@ class ChatViewModel @Inject constructor(
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
     private val audioRecordingUseCase: AudioRecordingUseCase,
     private val updateMessageUseCase: UpdateMessageUseCase,
+    private val roomRepository: RoomRepository
 ) : ViewModel() {
     private val tag = "ChatViewModel"
     val unreadRoomIds = mutableStateListOf<String>()
@@ -108,7 +113,53 @@ class ChatViewModel @Inject constructor(
     private var heartbeatJob: kotlinx.coroutines.Job? = null
     // ADICIONADO: Job para definir offline após delay
     private var offlineJob: kotlinx.coroutines.Job? = null
-    // FIM ADICIONADO
+
+    // ADICIONADO: StateFlow para guardar a mensagem fixada e expor para a UI
+    private val _pinnedMessage = MutableStateFlow<ChatMessage?>(null)
+    val pinnedMessage: StateFlow<ChatMessage?> = _pinnedMessage
+
+    // Guarda o texto da busca digitado pelo usuário.
+    private val _searchText = MutableStateFlow("")
+    val searchText: StateFlow<String> = _searchText
+
+    // Controla se a barra de busca está visível ou não.
+    private val _isSearchActive = MutableStateFlow(false)
+    val isSearchActive: StateFlow<Boolean> = _isSearchActive
+
+    // A lista de mensagens que a UI vai de fato mostrar.
+    // Ela combina a lista original (_messages) com o texto da busca (_searchText).
+    val filteredMessages: StateFlow<List<ChatMessage>> =
+        searchText.combine(_messages) { text, messages ->
+            if (text.isBlank()) {
+                messages // Se a busca for vazia, mostra todas as mensagens.
+            } else {
+                messages.filter {
+                    // Se houver texto, filtra apenas as mensagens de texto que o contenham.
+                    it.type == "text" && it.content.contains(text, ignoreCase = true)
+                }
+            }
+        }.stateIn( // Converte o resultado para um StateFlow para a UI observar.
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = _messages.value
+        )
+
+    /**
+     * Chamado pela UI para atualizar o texto da busca.
+     */
+    fun onSearchTextChange(text: String) {
+        _searchText.value = text
+    }
+
+    /**
+     * Chamado pela UI para abrir ou fechar a barra de busca.
+     */
+    fun toggleSearch() {
+        _isSearchActive.value = !_isSearchActive.value
+        if (!_isSearchActive.value) {
+            onSearchTextChange("") // Limpa o texto da busca quando o usuário fecha a barra.
+        }
+    }
 
     fun initialize(roomId: String, currentUserId: String, otherUserId: String) {
         this.roomId = roomId
@@ -125,19 +176,19 @@ class ChatViewModel @Inject constructor(
                 _messages.value = retrievedMessages
                 _chatState.value = ChatState.Success(retrievedMessages)
 
-                // Create the room if needed
                 initializeChatUseCase(roomId, currentUserId, otherUserId)
-
-                // ADICIONADO: Inicializar status do usuário
                 initializeUserStatus(currentUserId, otherUserId)
-                
-                // DEBUG: Forçar online para testar interface
-                kotlinx.coroutines.delay(2000)
-                Log.d(tag, "=== DEBUG: FORÇANDO ONLINE ===")
-                _otherUserOnlineStatus.value = true
-                _otherUserTypingStatus.value = false
-                _otherUserLastSeen.value = null
-                Log.d(tag, "Estados DEBUG: online=true, typing=false, lastSeen=null")
+
+                // ADICIONADO: Lógica para buscar a mensagem fixada ao iniciar o chat
+                val roomData = roomRepository.getRoom(roomId)
+                val pinnedId = roomData?.pinnedMessageId
+                if (pinnedId != null) {
+                    // Encontra a mensagem completa na lista já carregada
+                    _pinnedMessage.value = retrievedMessages.find { it.id == pinnedId }
+                } else {
+                    _pinnedMessage.value = null // Garante que não há mensagem fixada se não houver ID
+                }
+
             } catch (e: Exception) {
                 logger(tag, "Error initializing chat: $e")
                 _chatState.value = ChatState.Error("Failed to initialize chat: ${e.message}")
@@ -820,6 +871,22 @@ class ChatViewModel @Inject constructor(
         }
     }
     // FIM ADICIONADO
+
+    // ADICIONADO: Função que a UI vai chamar para fixar ou desafixar uma mensagem
+    fun pinMessage(message: ChatMessage?) {
+        roomId?.let { id ->
+            viewModelScope.launch {
+                try {
+                    val messageIdToPin = message?.id // Se a mensagem for nula, o ID se torna nulo (desafixar)
+                    roomRepository.pinMessage(id, messageIdToPin)
+                    _pinnedMessage.value = message // Atualiza o estado na UI instantaneamente
+                } catch (e: Exception) {
+                    logger(tag, "Error pinning message: ${e.message}")
+                    _chatState.value = ChatState.Error("Falha ao fixar mensagem: ${e.message}")
+                }
+            }
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()

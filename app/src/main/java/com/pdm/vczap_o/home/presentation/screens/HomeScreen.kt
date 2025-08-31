@@ -21,12 +21,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Message // Importe o ícone correto
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhonelinkLock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
@@ -66,6 +64,7 @@ import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.home.presentation.components.ChatListItem
 import com.pdm.vczap_o.home.presentation.viewmodels.HomeViewModel
 import com.pdm.vczap_o.navigation.AuthScreen
+import com.pdm.vczap_o.navigation.ContactsScreenDC // Importe a nova rota
 import com.pdm.vczap_o.navigation.CreateGroupScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SearchUsersScreenDC
@@ -79,9 +78,7 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     context: Context,
     chatViewModel: ChatViewModel,
-)
-
-{
+) {
     val homeViewModel: HomeViewModel = hiltViewModel()
     val notificationRepository = ApiRequestsRepository()
     val user = FirebaseAuth.getInstance().currentUser
@@ -139,12 +136,11 @@ fun HomeScreen(
     }
     LaunchedEffect(retrievedToken) {
         try {
-            // ADICIONADO: Debug do token FCM
             Log.d("FCM_DEBUG", "=== TOKEN FCM OBTIDO ===")
             Log.d("FCM_DEBUG", "Token: $retrievedToken")
             Log.d("FCM_DEBUG", "Token length: ${retrievedToken.length}")
             Log.d("FCM_DEBUG", "Token válido: ${retrievedToken.isNotEmpty()}")
-            
+
             if (user != null) {
                 Log.d("FCM_DEBUG", "Salvando token para usuário: ${user.uid}")
                 NotificationTokenManager.initializeAndUpdateToken(
@@ -191,29 +187,21 @@ fun HomeScreen(
     Scaffold(topBar = {
         Row(
             modifier = Modifier
-                .height(95.dp)
+                .height(100.dp)
                 .fillMaxWidth(1f)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 25.dp)
-                .padding(horizontal = 15.dp),
+                .padding(top = 10.dp)
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
-
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.PhonelinkLock,
-                    contentDescription = "",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(end = 0.1.dp),
-
-                )
+            Row {
                 Text(
                     "V.C. Zap-O",
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 28.sp,
-                    textAlign = TextAlign.Center,
+                    fontSize = 24.sp,
+                    textAlign = TextAlign.End,
                 )
                 if (netActivity.isNotBlank()) {
                     Text(
@@ -255,7 +243,7 @@ fun HomeScreen(
                             icon = Icons.Default.GroupAdd
                         ),
                         DropMenu(
-                            text = "Meu Perfil",
+                            text = "Profile",
                             onClick = {
                                 navController.navigate(MainScreen(1)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -264,7 +252,7 @@ fun HomeScreen(
                             icon = Icons.Default.Person
                         ),
                         DropMenu(
-                            text = "Configurações",
+                            text = "Settings",
                             onClick = {
                                 navController.navigate(MainScreen(2)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -273,7 +261,7 @@ fun HomeScreen(
                             icon = Icons.Default.Settings
                         ),
                         DropMenu(
-                            text = "Sair",
+                            text = "Logout",
                             onClick = { authViewModel.logout() },
                             icon = Icons.AutoMirrored.Default.Logout
                         ),
@@ -282,14 +270,20 @@ fun HomeScreen(
                 )
             }
         }
-    }, floatingActionButton = {
-        FloatingActionButton(
-            onClick = { navController.navigate(SearchUsersScreenDC) },
-            modifier = Modifier.padding(bottom = 0.5.dp, end = 5.dp)
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Chat")
-        }
-    }) { paddingValues ->
+    },
+        // ▼▼▼ ALTERAÇÕES SOMENTE AQUI DENTRO ▼▼▼
+        floatingActionButton = {
+            FloatingActionButton(
+                // ANTES: onClick = { navController.navigate(SearchUsersScreenDC) }
+                // AGORA: Navega para a tela de contatos que criamos.
+                onClick = { navController.navigate(ContactsScreenDC) },
+                modifier = Modifier.padding(bottom = 20.dp, end = 5.dp)
+            ) {
+                // ANTES: Icon(imageVector = Icons.Default.Add, ...
+                // AGORA: Usamos um ícone de mensagem, que combina mais com "iniciar conversa".
+                Icon(imageVector = Icons.Default.Message, contentDescription = "Contatos")
+            }
+        }) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -344,7 +338,7 @@ fun HomeScreen(
             } else {
                 EmptyChatPlaceholder(
                     lottieAnimation = R.raw.online_chat,
-                    message = "Press + to search users",
+                    message = "Press the message button to search contacts", // Mensagem ajustada
                     speed = 0.6f,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -379,4 +373,3 @@ fun GroupListItem(group: Group, navController: NavController) {
         }
     }
 }
-

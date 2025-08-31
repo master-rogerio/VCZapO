@@ -57,7 +57,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, navController: NavController) {
         topBar = {
             LargeFlexibleTopAppBar(
                 scrollBehavior = scrollBehavior,
-                title = { Text("Configurações", modifier = Modifier.padding(top = 10.dp)) },
+                title = { Text("Settings", modifier = Modifier.padding(top = 10.dp)) },
                 actions = {
                     IconButton(onClick = { showResetDialog = true }) {
                         Icon(Icons.Default.RestartAlt, contentDescription = "Reset Settings")

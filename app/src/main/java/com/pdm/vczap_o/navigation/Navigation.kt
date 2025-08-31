@@ -33,6 +33,7 @@ import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
 import com.google.gson.Gson
+import com.pdm.vczap_o.contacts.presentation.screens.ContactsScreen
 
 @Composable
 fun ChatAppNavigation() {
@@ -155,5 +156,10 @@ fun ChatAppNavigation() {
             CreateGroupScreen(navController = navController)
         }
         // ADIÇÃO TERMINA AQUI
+
+        // ADICIONADO: A NOVA ROTA PARA A TELA DE CONTATOS
+        composable<ContactsScreenDC> {
+            ContactsScreen()
+        }
     }
 }

@@ -30,7 +30,7 @@ fun FontSizeSelector(
             Icon(imageVector = Icons.Default.TextFields, contentDescription = "")
             Column {
                 Text(
-                    text = "Tamanho da fonte: ",
+                    text = "Font Size: ",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium

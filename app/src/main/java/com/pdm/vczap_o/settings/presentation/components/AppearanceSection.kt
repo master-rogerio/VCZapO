@@ -15,7 +15,7 @@ fun AppearanceSection(
     state: SettingsState,
     viewModel: SettingsViewModel,
 ) {
-    SectionWrapper(title = "Aparência", icon = Icons.Default.Palette) {
+    SectionWrapper(title = "Appearance", icon = Icons.Default.Palette) {
         DarkModeSelector(
             currentMode = state.themeMode,
             onModeSelected = viewModel::updateThemeMode

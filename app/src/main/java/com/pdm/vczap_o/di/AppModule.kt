@@ -21,6 +21,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+import com.pdm.vczap_o.home.data.RoomRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -109,5 +110,14 @@ object AppModule {
         return GetGroupsUseCase(groupRepository)
     }
     // ------------------------------------------
+
+    @Provides
+    @Singleton
+    fun provideRoomRepository(
+        firestore: FirebaseFirestore,
+        @ApplicationContext context: Context
+    ): RoomRepository {
+        return RoomRepository(firestore, context)
+    }
 }
 

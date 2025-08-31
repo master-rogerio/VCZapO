@@ -99,3 +99,6 @@ data class CameraXScreenDC(val roomId: String, val profileUrl: String, val devic
  */
 @Serializable
 object CreateGroupScreen
+
+@Serializable
+object ContactsScreenDC

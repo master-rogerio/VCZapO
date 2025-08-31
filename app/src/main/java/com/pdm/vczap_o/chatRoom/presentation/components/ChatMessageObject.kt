@@ -2,27 +2,14 @@ package com.pdm.vczap_o.chatRoom.presentation.components
 
 import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.* // Alterado para importar todos os ícones default
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -32,13 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.AudioMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.ImageMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.LocationMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.TextMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.VideoMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.FileMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.StickerMessage
+import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.*
 import com.pdm.vczap_o.chatRoom.presentation.utils.vibrateDevice
 import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.mock.messageExample
@@ -113,6 +94,11 @@ fun ChatMessageObject(
         ) {
             Box(modifier = Modifier.absoluteOffset(x = 30.dp, y = 30.dp)) {
                 val myMessageOptionsList = listOf(
+                    DropMenu( // ADICIONADO
+                        text = "Fixar",
+                        onClick = { chatViewModel.pinMessage(message) },
+                        icon = Icons.Default.PushPin
+                    ),
                     DropMenu(
                         text = "Copy",
                         onClick = { copyTextToClipboard(context, message.content) },
@@ -130,6 +116,11 @@ fun ChatMessageObject(
                     ),
                 )
                 val othersMessageOptionsList = listOf(
+                    DropMenu( // ADICIONADO
+                        text = "Fixar",
+                        onClick = { chatViewModel.pinMessage(message) },
+                        icon = Icons.Default.PushPin
+                    ),
                     DropMenu(
                         text = "Copy",
                         onClick = { copyTextToClipboard(context, message.content) },

@@ -75,8 +75,6 @@ class AuthRepository @Inject constructor(
             if (msg.contains("auth/invalid-email")) msg = "Invalid Email"
             else if (msg.contains("auth/invalid-credential")) msg = "Invalid Credentials"
             else if (msg.contains("auth/network-request-failed")) msg = "No internet connection"
-            else if (msg.contains("auth/user-not-found")) msg = "Email não encontrado"
-            else if (msg.contains("auth/too-many-requests")) msg = "Muitas tentativas de Login. Tente novamente mais tarde"
             Result.failure(Exception(msg))
         }
     }

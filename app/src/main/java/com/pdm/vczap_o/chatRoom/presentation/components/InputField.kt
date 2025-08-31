@@ -223,7 +223,7 @@ fun MessageInput(
                         Row(modifier = Modifier.weight(1f)) {
                             Box {
                                 innerTextField()
-                                if (messageText.isBlank()) Text("Digite...")
+                                if (messageText.isBlank()) Text("Type a message")
                             }
                         }
                         // ADICIONADO: Botão de emoji/sticker
