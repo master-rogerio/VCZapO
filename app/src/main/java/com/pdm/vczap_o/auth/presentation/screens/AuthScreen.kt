@@ -2,6 +2,8 @@ package com.pdm.vczap_o.auth.presentation.screens
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import androidx.biometric.BiometricPrompt
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -39,6 +41,7 @@ import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.navigation.AuthScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SetUserDetailsDC
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @SuppressLint("ContextCastToActivity")
@@ -74,35 +77,135 @@ fun AuthScreen(
         activity?.let { BiometricAuthenticator(it) }
     }
     var showBiometricPrompt by remember { mutableStateOf(false) }
+    var biometricError by remember { mutableStateOf<String?>(null) }
 
     // Verifica se o usuário já está logado para mostrar a biometria
     LaunchedEffect(key1 = Unit) {
         if (authViewModel.isUserLoggedIn()) {
-            if (biometricAuthenticator?.isBiometricAvailable() == BiometricAuthStatus.READY) {
-                showBiometricPrompt = true
+            // Verifica se o activity existe
+            if (activity != null) {
+                // Verifica se o autenticador biométrico foi criado com sucesso
+                if (biometricAuthenticator != null) {
+                    when (biometricAuthenticator.isBiometricAvailable()) {
+                        BiometricAuthStatus.READY -> {
+                            showBiometricPrompt = true
+                        }
+                        BiometricAuthStatus.NOT_AVAILABLE -> {
+                            // Biometria não disponível, navega direto para a tela principal
+                            navController.navigate(MainScreen(0)) {
+                                popUpTo(AuthScreen) { inclusive = true }
+                            }
+                        }
+                        BiometricAuthStatus.TEMPORARILY_UNAVAILABLE -> {
+                            // Biometria temporariamente indisponível, aguarda um pouco
+                            delay(1000)
+                            navController.navigate(MainScreen(0)) {
+                                popUpTo(AuthScreen) { inclusive = true }
+                            }
+                        }
+                        BiometricAuthStatus.AVAILABLE_BUT_NOT_ENROLLED -> {
+                            // Biometria disponível mas não configurada, navega direto
+                            navController.navigate(MainScreen(0)) {
+                                popUpTo(AuthScreen) { inclusive = true }
+                            }
+                        }
+                    }
+                } else {
+                    // Autenticador biométrico não pôde ser criado, navega direto
+                    navController.navigate(MainScreen(0)) {
+                        popUpTo(AuthScreen) { inclusive = true }
+                    }
+                }
+            } else {
+                // Activity não é FragmentActivity, navega direto
+                navController.navigate(MainScreen(0)) {
+                    popUpTo(AuthScreen) { inclusive = true }
+                }
             }
         }
     }
 
-    if (showBiometricPrompt && biometricAuthenticator != null) {
+    if (showBiometricPrompt && biometricAuthenticator != null && activity != null) {
         biometricAuthenticator.promptBiometricAuth(
             title = "Login Biométrico",
             subtitle = "Faça login usando sua biometria",
             negativeButtonText = "Cancelar",
             onSuccess = {
                 showBiometricPrompt = false
+                biometricError = null
                 navController.navigate(MainScreen(0)) {
                     popUpTo(AuthScreen) { inclusive = true }
                 }
             },
-            onError = { _, _ ->
+            onError = { errorCode, errorString ->
                 showBiometricPrompt = false
+                biometricError = "Erro biométrico: $errorString"
+                // Log do erro para debug
+                Log.e("AuthScreen", "Biometric error: $errorCode - $errorString")
+
+                // CORREÇÃO: Usar as constantes corretas do androidx.biometric.BiometricPrompt
+                when (errorCode) {
+                    BiometricPrompt.ERROR_HW_NOT_PRESENT -> {
+                        biometricError = "Dispositivo não possui biometria"
+                    }
+                    BiometricPrompt.ERROR_HW_UNAVAILABLE -> {
+                        biometricError = "Biometria temporariamente indisponível"
+                    }
+                    BiometricPrompt.ERROR_LOCKOUT -> {
+                        biometricError = "Muitas tentativas. Tente novamente mais tarde"
+                    }
+                    BiometricPrompt.ERROR_LOCKOUT_PERMANENT -> {
+                        biometricError = "Biometria bloqueada permanentemente"
+                    }
+                    BiometricPrompt.ERROR_NO_BIOMETRICS -> {
+                        biometricError = "Nenhuma biometria configurada"
+                    }
+                    BiometricPrompt.ERROR_TIMEOUT -> {
+                        biometricError = "Tempo limite excedido"
+                    }
+                    BiometricPrompt.ERROR_USER_CANCELED -> {
+                        biometricError = "Autenticação cancelada pelo usuário"
+                    }
+                    else -> {
+                        biometricError = "Erro desconhecido: $errorString"
+                    }
+                }
+
+                // CORREÇÃO: Usar coroutine scope para chamar delay
+                scope.launch {
+                    // Navega para a tela principal após erro
+                    delay(2000) // Aguarda 2 segundos para mostrar o erro
+                    navController.navigate(MainScreen(0)) {
+                        popUpTo(AuthScreen) { inclusive = true }
+                    }
+                }
             },
             onFailed = {
+                showBiometricPrompt = false
+                biometricError = "Falha na autenticação biométrica"
                 Toast.makeText(context, "Falha na autenticação", Toast.LENGTH_SHORT).show()
+
+                // CORREÇÃO: Usar coroutine scope para chamar delay
+                scope.launch {
+                    // Navega para a tela principal após falha
+                    delay(2000)
+                    navController.navigate(MainScreen(0)) {
+                        popUpTo(AuthScreen) { inclusive = true }
+                    }
+                }
             }
         )
     }
+
+    // CORREÇÃO: Exibir mensagens de erro biométrico se necessário
+    biometricError?.let { error ->
+        LaunchedEffect(error) {
+            showToast(context = context, message = error, long = true)
+            biometricError = null
+        }
+    }
+
+
 
     LaunchedEffect(authState) {
         if (authState) {
