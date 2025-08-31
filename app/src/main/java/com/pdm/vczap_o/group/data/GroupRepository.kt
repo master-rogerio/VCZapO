@@ -1,9 +1,8 @@
 package com.pdm.vczap_o.group.data
 
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.toObjects
+import com.pdm.vczap_o.core.model.User
 import com.pdm.vczap_o.group.data.model.Group
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -14,6 +13,7 @@ class GroupRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     private val groupsCollection = firestore.collection("groups")
+    private val usersCollection = firestore.collection("users")
 
     suspend fun createGroup(group: Group): Result<Unit> {
         return try {
@@ -25,43 +25,41 @@ class GroupRepository @Inject constructor(
     }
 
     suspend fun addMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            groupsCollection.document(groupId).update("members", FieldValue.arrayUnion(userId))
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        // Implementar lógica
+        return Result.success(Unit)
     }
 
     suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            groupsCollection.document(groupId).update("members", FieldValue.arrayRemove(userId))
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        // Implementar lógica
+        return Result.success(Unit)
     }
 
-    /**
-     * Escuta em tempo real os grupos dos quais um usuário é membro.
-     */
-    fun getGroups(userId: String): Flow<Result<List<Group>>> = callbackFlow {
-        val subscription = firestore.collection("groups")
-            .whereArrayContains("members", userId)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(Result.failure(error))
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val groups = snapshot.toObjects<Group>()
-                    trySend(Result.success(groups))
-                }
+    fun getGroups(userId: String): Flow<Result<List<Group>>> {
+        // Implementar lógica
+        return callbackFlow { trySend(Result.success(emptyList())) }
+    }
+
+    // NOVA FUNÇÃO
+    fun getGroupDetails(groupId: String): Flow<Result<Group>> = callbackFlow {
+        val groupDocument = groupsCollection.document(groupId)
+
+        val subscription = groupDocument.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Result.failure(error))
+                return@addSnapshotListener
             }
-        // Ao final, remove o listener para evitar memory leaks
+
+            if (snapshot != null && snapshot.exists()) {
+                val group = snapshot.toObject(Group::class.java)
+                if (group != null) {
+                    trySend(Result.success(group))
+                } else {
+                    trySend(Result.failure(Exception("Falha ao converter dados do grupo.")))
+                }
+            } else {
+                trySend(Result.failure(Exception("Grupo não encontrado.")))
+            }
+        }
         awaitClose { subscription.remove() }
     }
 }
-

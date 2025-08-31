@@ -99,3 +99,11 @@ data class CameraXScreenDC(val roomId: String, val profileUrl: String, val devic
  */
 @Serializable
 object CreateGroupScreen
+
+/**
+ * Represents the screen for viewing group information and members.
+ * @param groupId The unique identifier of the group.
+ */
+@Serializable
+data class GroupInfoScreen(val groupId: String)
+

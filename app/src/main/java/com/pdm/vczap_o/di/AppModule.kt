@@ -13,8 +13,6 @@ import com.pdm.vczap_o.group.domain.usecase.CreateGroupUseCase
 import com.pdm.vczap_o.group.domain.usecase.GetGroupsUseCase
 import com.pdm.vczap_o.group.domain.usecase.RemoveMemberUseCase
 import com.pdm.vczap_o.home.data.SearchUsersRepository
-import com.pdm.vczap_o.home.domain.usecase.GetAllUsersUseCase
-import com.pdm.vczap_o.home.domain.usecase.SearchUsersUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
@@ -95,14 +93,5 @@ object AppModule {
     fun providesGetGroupsUseCase(groupRepository: GroupRepository): GetGroupsUseCase =
         GetGroupsUseCase(groupRepository)
 
-    @Provides
-    @Singleton
-    fun providesGetAllUsersUseCase(repository: SearchUsersRepository): GetAllUsersUseCase =
-        GetAllUsersUseCase(repository)
-
-    @Provides
-    @Singleton
-    fun providesSearchUsersUseCase(repository: SearchUsersRepository): SearchUsersUseCase =
-        SearchUsersUseCase(repository)
 }
 

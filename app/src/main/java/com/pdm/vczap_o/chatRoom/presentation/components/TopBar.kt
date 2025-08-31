@@ -114,7 +114,7 @@ fun HeaderBar(
                     android.util.Log.d("TopBar", "isUserOnline: $isUserOnline")
                     android.util.Log.d("TopBar", "lastSeen: $lastSeen")
                     android.util.Log.d("TopBar", "netActivity: '$netActivity'")
-                    
+
                     // SIMPLIFICADO: Lógica mais clara
                     val statusText = if (isUserTyping) {
                         android.util.Log.d("TopBar", "ESCOLHEU: digitando...")
@@ -132,16 +132,16 @@ fun HeaderBar(
                         android.util.Log.d("TopBar", "ESCOLHEU: vazio")
                         ""
                     }
-                    
+
                     android.util.Log.d("TopBar", "STATUS FINAL: '$statusText'")
                     android.util.Log.d("TopBar", "=== FIM TOPBAR ===")
-                    
+
                     val statusColor = when {
                         isUserTyping -> MaterialTheme.colorScheme.primary
                         isUserOnline -> MaterialTheme.colorScheme.tertiary
                         else -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     }
-                    
+
                     if (statusText.isNotEmpty()) {
                         Text(
                             text = statusText,

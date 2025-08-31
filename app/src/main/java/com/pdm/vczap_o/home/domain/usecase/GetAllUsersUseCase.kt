@@ -1,6 +1,7 @@
 package com.pdm.vczap_o.home.domain.usecase
 
 import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.home.data.SearchUsersRepository
 import javax.inject.Inject
 
 class GetAllUsersUseCase @Inject constructor(

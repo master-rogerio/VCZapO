@@ -1,15 +1,19 @@
 package com.pdm.vczap_o.group.presentation.state
 
 import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.group.data.model.Group
 
 data class GroupUiState(
     val isLoading: Boolean = false,
-    val success: Boolean = false,
-    val error: String? = null,
+    val groupName: String = "",
+    val groupImageUri: String? = null,
+    val searchText: String = "",
+    val allUsers: List<User> = emptyList(),
+    val selectedUsers: List<User> = emptyList(),
+    val groupCreated: Boolean = false,
+    val errorMessage: String? = null,
 
-    // ADIÇÃO INICIA AQUI
-    val allUsers: List<User> = emptyList(), // Guarda a lista de todos os utilizadores
-    val selectedMembers: Set<String> = emptySet() // Guarda os IDs dos utilizadores selecionados
-    // ADIÇÃO TERMINA AQUI
+    // NOVAS PROPRIEDADES
+    val currentGroup: Group? = null,
+    val groupMembers: List<User> = emptyList()
 )
-

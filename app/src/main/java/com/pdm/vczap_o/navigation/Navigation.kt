@@ -26,9 +26,8 @@ import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.core.model.User
-// ADIÇÃO INICIA AQUI
 import com.pdm.vczap_o.group.presentation.screens.CreateGroupScreen
-// ADIÇÃO TERMINA AQUI
+import com.pdm.vczap_o.group.presentation.screens.GroupInfoScreen
 import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
@@ -148,12 +147,21 @@ fun ChatAppNavigation() {
             )
         }
 
-        // ADIÇÃO INICIA AQUI
         composable<CreateGroupScreen>(
             enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
         ) {
             CreateGroupScreen(navController = navController)
         }
-        // ADIÇÃO TERMINA AQUI
+
+        composable<GroupInfoScreen>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
+        ) {
+            val args = it.toRoute<GroupInfoScreen>()
+            GroupInfoScreen(
+                navController = navController,
+                groupId = args.groupId
+            )
+        }
     }
 }
+
