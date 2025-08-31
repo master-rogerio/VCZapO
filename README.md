@@ -5,7 +5,7 @@
  
 # Trabalho da Disciplina Programação para Dispositivos Móveis
  
-Esse é o repositório para o trabalho da disciplina Programação para Dispositivos Móveis do curso de Sistemas de Informação da Universidade Federal de Uberlândia. 
+Repositório para o quinto trabalho da disciplina Programação para Dispositivos Móveis do curso de Sistemas de Informação da Universidade Federal de Uberlândia. 
 ###### Por Danilo Plissken, Luiz Fellipe Silva Lima, Eduardo Antonio da Silva, Ótavio Martins Gondim e Rogério Anastácio
 
 <br>
@@ -75,7 +75,7 @@ graph TD
 
 ## 📖 Sobre o Aplicativo
 
-**VCZapO** é um aplicativo de mensagens instantâneas para Android, desenvolvido em Kotlin com Jetpack Compose. O aplicativo oferece uma experiência de chat completa e segura, com conversas individuais e em grupo, tudo protegido com criptografia de ponta-a-ponta utilizando o Signal Protocol. A arquitetura de backend é baseada no Firebase, aproveitando o Cloud Firestore para dados em tempo real, Firebase Authentication para gerenciamento de usuários, e Cloud Storage para armazenamento de mídias.
+**V.C. Zap-O** é um aplicativo de mensagens instantâneas para Android, desenvolvido em Kotlin com Jetpack Compose. O aplicativo oferece uma experiência de chat completa e segura, com conversas individuais e em grupo, tudo protegido com criptografia de ponta-a-ponta utilizando o Signal Protocol. A arquitetura de backend é baseada no Firebase, aproveitando o Cloud Firestore para dados em tempo real, Firebase Authentication para gerenciamento de usuários, e Cloud Storage para armazenamento de mídias.
 
 Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza um banco de dados Room como cache local para mensagens e contatos, garantindo que o usuário tenha acesso às suas conversas mesmo sem conexão com a internet.
 
@@ -98,6 +98,8 @@ Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza u
 - ✅ **Busca de Usuários:** Encontre e inicie conversas com novos usuários facilmente.
 - ✅ **Personalização:** Altere o tema do aplicativo (claro/escuro) e o tamanho da fonte para uma melhor experiência de visualização.
 - ✅ **Perfil de Usuário:** Personalize seu perfil com foto e nome de usuário.
+- ✅ **Mensagens Fixadas:** Permite ao usuário selecione uma mensagem na conversa e a fixe no topo do chat.
+- ✅ **Filtro de Mensagens por Palavra-chave:** Personalize seu perfil com foto e nome de usuário.
 
 <br>
 
