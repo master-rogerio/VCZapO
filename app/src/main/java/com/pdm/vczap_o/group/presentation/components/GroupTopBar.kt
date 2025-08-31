@@ -1,132 +1,81 @@
+// app/src/main/java/com/pdm/vczap_o/group/presentation/components/GroupTopBar.kt
+
 package com.pdm.vczap_o.group.presentation.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import coil.compose.rememberAsyncImagePainter
-import com.pdm.vczap_o.R
 import com.pdm.vczap_o.chatRoom.presentation.components.PopUpMenu
-import com.pdm.vczap_o.core.data.mock.DropMenu
-import com.pdm.vczap_o.core.model.Room
-import com.pdm.vczap_o.navigation.GroupInfoScreen
+import com.pdm.vczap_o.core.data.mock.optionsListExample
+import com.pdm.vczap_o.group.data.model.Group
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupTopBar(
-    navController: NavController,
-    room: Room,
-    goBack: () -> Unit,
-    onImageClick: () -> Unit,
-    chatOptionsList: List<DropMenu>,
+    group: Group,
+    onNavigationIconClick: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var isMenuVisible by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .height(80.dp)
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(top = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        // Back button, profile pic and name
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(
-                Icons.AutoMirrored.Default.ArrowBack,
-                contentDescription = "back button",
-                modifier = Modifier
-                    .padding(start = 5.dp)
-                    .size(25.dp)
-                    .clickable(onClick = goBack),
-                tint = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.width(5.dp))
-            // profile pic and name
+    TopAppBar(
+        title = {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable {
-                        navController.navigate(GroupInfoScreen(groupId = room.id))
-                    }
+                modifier = Modifier.clickable { /* Ação ao clicar no título */ },
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
-                    model = room.photoUrl,
-                    contentDescription = "Group Picture",
+                    model = group.photoUrl,
+                    contentDescription = "Foto do grupo",
                     modifier = Modifier
-                        .clip(CircleShape)
-                        .size(45.dp)
-                        .align(Alignment.CenterVertically),
-                    contentScale = ContentScale.Crop,
-                    error = rememberAsyncImagePainter(R.drawable.ic_google) // Icone padrão para grupo
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
                 )
-
-                Column {
-                    Text(
-                        text = room.name,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(start = 10.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = group.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onNavigationIconClick) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Voltar"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = { isMenuVisible = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "Mais opções"
+                )
+            }
+            if (isMenuVisible) {
+                PopUpMenu(
+                    expanded = isMenuVisible,
+                    onDismiss = { isMenuVisible = false },
+                    dropItems = optionsListExample,
+                    reactions = { /* NÃO FAZ NADA, MAS É UM COMPOSABLE VÁLIDO */ }, // <<< CORREÇÃO AQUI
+                    modifier = Modifier,
+                )
             }
         }
-
-        // Action icons
-        Row(modifier = Modifier.padding(end = 12.dp)) {
-            Icon(
-                Icons.Outlined.CameraAlt,
-                contentDescription = "Camera",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.clickable(onClick = onImageClick)
-            )
-            Spacer(modifier = Modifier.width(15.dp))
-            Icon(
-                Icons.Outlined.MoreVert,
-                contentDescription = "More options",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.clickable(onClick = { expanded = !expanded })
-            )
-            PopUpMenu(
-                expanded = expanded,
-                onDismiss = { expanded = false },
-                modifier = Modifier,
-                dropItems = chatOptionsList,
-                reactions = {}
-            )
-        }
-    }
+    )
 }
-
