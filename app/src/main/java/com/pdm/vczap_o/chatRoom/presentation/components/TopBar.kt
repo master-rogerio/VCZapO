@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Icon
@@ -49,6 +48,11 @@ fun HeaderBar(
     navController: NavController,
     chatOptionsList: List<DropMenu>,
     onImageClick: () -> Unit,
+    // ADICIONADO: Parâmetros para status online e digitação
+    isUserOnline: Boolean = false,
+    isUserTyping: Boolean = false,
+    lastSeen: String? = null,
+    // FIM ADICIONADO
 ) {
     var expanded by remember { mutableStateOf(false) }
     Row(
@@ -103,14 +107,50 @@ fun HeaderBar(
                         modifier = Modifier.padding(start = 10.dp),
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    if (netActivity.isNotEmpty()) {
+                    // ADICIONADO: Lógica para exibir status do usuário
+                    // DEBUG TEMPORÁRIO
+                    android.util.Log.d("TopBar", "=== TOPBAR DEBUG ===")
+                    android.util.Log.d("TopBar", "isUserTyping: $isUserTyping")
+                    android.util.Log.d("TopBar", "isUserOnline: $isUserOnline")
+                    android.util.Log.d("TopBar", "lastSeen: $lastSeen")
+                    android.util.Log.d("TopBar", "netActivity: '$netActivity'")
+                    
+                    // SIMPLIFICADO: Lógica mais clara
+                    val statusText = if (isUserTyping) {
+                        android.util.Log.d("TopBar", "ESCOLHEU: digitando...")
+                        "digitando..."
+                    } else if (isUserOnline) {
+                        android.util.Log.d("TopBar", "ESCOLHEU: online")
+                        "online"
+                    } else if (!lastSeen.isNullOrBlank()) {
+                        android.util.Log.d("TopBar", "ESCOLHEU: visto por último $lastSeen")
+                        "visto por último $lastSeen"
+                    } else if (netActivity.isNotEmpty()) {
+                        android.util.Log.d("TopBar", "ESCOLHEU: netActivity $netActivity")
+                        netActivity
+                    } else {
+                        android.util.Log.d("TopBar", "ESCOLHEU: vazio")
+                        ""
+                    }
+                    
+                    android.util.Log.d("TopBar", "STATUS FINAL: '$statusText'")
+                    android.util.Log.d("TopBar", "=== FIM TOPBAR ===")
+                    
+                    val statusColor = when {
+                        isUserTyping -> MaterialTheme.colorScheme.primary
+                        isUserOnline -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    }
+                    
+                    if (statusText.isNotEmpty()) {
                         Text(
-                            text = netActivity,
+                            text = statusText,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(start = 11.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = statusColor
                         )
                     }
+                    // FIM ADICIONADO
                 }
             }
 
@@ -123,13 +163,6 @@ fun HeaderBar(
                 contentDescription = "",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                 modifier = Modifier.clickable(onClick = { onImageClick() })
-            )
-            Spacer(modifier = Modifier.width(15.dp))
-            Icon(
-                Icons.Outlined.Call,
-                contentDescription = "",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.clickable(onClick = {})
             )
             Spacer(modifier = Modifier.width(15.dp))
             Icon(

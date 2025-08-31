@@ -17,7 +17,15 @@ class SendNotificationUseCase @Inject constructor(
         profileUrl: String,
     ) {
         try {
-            apiRequestsRepository.sendNotification(
+            Log.d("SendNotificationUseCase", "=== ENVIANDO NOTIFICAÇÃO ===")
+            Log.d("SendNotificationUseCase", "Token: $recipientsToken")
+            Log.d("SendNotificationUseCase", "Title: $title")
+            Log.d("SendNotificationUseCase", "Body: $body")
+            Log.d("SendNotificationUseCase", "RoomId: $roomId")
+            Log.d("SendNotificationUseCase", "Recipients: $recipientsUserId")
+            Log.d("SendNotificationUseCase", "Sender: $sendersUserId")
+            
+            val response = apiRequestsRepository.sendNotification(
                 recipientsToken = recipientsToken,
                 title = title,
                 body = body,
@@ -26,8 +34,13 @@ class SendNotificationUseCase @Inject constructor(
                 sendersUserId = sendersUserId,
                 profileUrl = profileUrl
             )
+            
+            Log.d("SendNotificationUseCase", "Resposta do servidor: $response")
+            Log.d("SendNotificationUseCase", "=== NOTIFICAÇÃO ENVIADA COM SUCESSO ===")
         } catch (e: Exception) {
-            Log.e("SendNotificationUseCase", "Error sending notification: ${e.message}")
+            Log.e("SendNotificationUseCase", "=== ERRO AO ENVIAR NOTIFICAÇÃO ===")
+            Log.e("SendNotificationUseCase", "Erro: ${e.message}")
+            Log.e("SendNotificationUseCase", "Stack trace: ${e.stackTrace.contentToString()}")
         }
     }
 }

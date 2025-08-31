@@ -79,7 +79,7 @@ fun LoadingScreen(navController: NavHostController, authViewModel: AuthViewModel
 
             // App Logo/Title
             Text(
-                text = "V.C Zap-o",
+                text = "V.C. Zap-O",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer,

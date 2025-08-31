@@ -26,6 +26,12 @@ fun showNotification(
     sendersUserId: String,
     recipientsUserId: String,
 ) {
+    android.util.Log.d("NOTIFICATION_DEBUG", "=== EXIBINDO NOTIFICAÇÃO ===")
+    android.util.Log.d("NOTIFICATION_DEBUG", "Message: $message")
+    android.util.Log.d("NOTIFICATION_DEBUG", "Sender: $sender")
+    android.util.Log.d("NOTIFICATION_DEBUG", "ID: $id")
+    android.util.Log.d("NOTIFICATION_DEBUG", "SendersUserId: $sendersUserId")
+    android.util.Log.d("NOTIFICATION_DEBUG", "RecipientsUserId: $recipientsUserId")
     // Create an intent for opening the app
     val contentIntent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -109,16 +115,26 @@ fun showNotification(
         .setGroupSummary(true)
         .build()
 
+    android.util.Log.d("NOTIFICATION_DEBUG", "Verificando permissões...")
+    val hasPermission = ActivityCompat.checkSelfPermission(
+        context,
+        Manifest.permission.POST_NOTIFICATIONS
+    ) == PackageManager.PERMISSION_GRANTED
+    
+    android.util.Log.d("NOTIFICATION_DEBUG", "Permissão POST_NOTIFICATIONS: $hasPermission")
+    
     NotificationManagerCompat.from(context).apply {
-        if (ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
+        if (hasPermission) {
+            android.util.Log.d("NOTIFICATION_DEBUG", "Exibindo notificação individual...")
             notify(id.hashCode(), individualNotification)
+            android.util.Log.d("NOTIFICATION_DEBUG", "Exibindo notificação de grupo...")
             notify(groupKey.hashCode(), groupSummary)
+            android.util.Log.d("NOTIFICATION_DEBUG", "✅ Notificações exibidas com sucesso!")
+        } else {
+            android.util.Log.e("NOTIFICATION_DEBUG", "❌ Permissão POST_NOTIFICATIONS negada!")
         }
     }
+    android.util.Log.d("NOTIFICATION_DEBUG", "=== FIM EXIBIÇÃO NOTIFICAÇÃO ===")
 }
 
 const val groupKey = "chat_messages_group"

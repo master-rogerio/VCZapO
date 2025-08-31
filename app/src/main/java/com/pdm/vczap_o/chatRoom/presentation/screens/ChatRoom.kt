@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -102,6 +103,23 @@ fun ChatScreen(
     val chatState by chatViewModel.chatState.collectAsState()
     val messages by chatViewModel.messages.collectAsState()
     val connectivityStatus by connectivityViewModel.connectivityStatus.collectAsStateWithLifecycle()
+    
+    // ADICIONADO: Estados para status e digitação
+    val otherUserOnlineStatus by chatViewModel.otherUserOnlineStatus.collectAsState()
+    val otherUserTypingStatus by chatViewModel.otherUserTypingStatus.collectAsState()
+    val otherUserLastSeen by chatViewModel.otherUserLastSeen.collectAsState()
+    
+    // DEBUG TEMPORÁRIO - Logs de mudança de estado
+    LaunchedEffect(otherUserOnlineStatus) {
+        Log.d(tag, "=== CHATROOM: otherUserOnlineStatus mudou para: $otherUserOnlineStatus ===")
+    }
+    LaunchedEffect(otherUserTypingStatus) {
+        Log.d(tag, "=== CHATROOM: otherUserTypingStatus mudou para: $otherUserTypingStatus ===")
+    }
+    LaunchedEffect(otherUserLastSeen) {
+        Log.d(tag, "=== CHATROOM: otherUserLastSeen mudou para: $otherUserLastSeen ===")
+    }
+    // FIM ADICIONADO
 
 //     functions
 //    val messages = generateMockMessages(currentUserId)
@@ -255,6 +273,17 @@ fun ChatScreen(
         Log.d(tag, "Initializing chat with roomId: $roomId")
         chatViewModel.initialize(roomId, currentUserId, userId)
     }
+    
+    // ADICIONADO: Gerenciar status baseado no ciclo de vida da tela
+    LaunchedEffect(Unit) {
+        chatViewModel.onAppForeground()
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            chatViewModel.onAppBackground()
+        }
+    }
     LaunchedEffect(connectivityStatus) {
         if (connectivityStatus is ConnectivityStatus.Available) {
             Log.d(tag, "Re-initializing chatroom listener with roomId: $roomId")
@@ -331,7 +360,12 @@ fun ChatScreen(
                     } else {
                         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
-                }
+                },
+                // ADICIONADO: Parâmetros de status e digitação
+                isUserOnline = otherUserOnlineStatus,
+                isUserTyping = otherUserTypingStatus,
+                lastSeen = otherUserLastSeen
+                // FIM ADICIONADO
             )
         },
         floatingActionButton = {
@@ -369,7 +403,7 @@ fun ChatScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 0.dp, bottom = 5.dp)
+                        .padding(top = 0.dp, bottom = 0.dp)
                 ) {
                     if (messages.isEmpty() && showEmptyMessagesAnimation) {
                         EmptyChatPlaceholder(
@@ -470,6 +504,13 @@ fun ChatScreen(
                             if (hasMessages) {
                                 ConversationHistoryManager.addMessage(roomId, newMessage)
                             }
+                        },
+                        // ADICIONADO: Callbacks para digitação
+                        onUserStartedTyping = {
+                            chatViewModel.onUserStartedTyping()
+                        },
+                        onUserStoppedTyping = {
+                            chatViewModel.onUserStoppedTyping()
                         },
                         // FIM ADICIONADO
                         userData = userData,

@@ -25,6 +25,9 @@ import com.pdm.vczap_o.chatRoom.domain.UploadFileUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendVideoMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendFileMessageUseCase
 import com.pdm.vczap_o.chatRoom.domain.SendStickerMessageUseCase
+import com.pdm.vczap_o.chatRoom.domain.ManageUserStatusUseCase
+import com.pdm.vczap_o.chatRoom.domain.ManageTypingIndicatorUseCase
+import com.pdm.vczap_o.chatRoom.domain.SendNotificationUseCase
 // FIM ADICIONADO
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.model.ChatMessage
@@ -58,6 +61,11 @@ class ChatViewModel @Inject constructor(
     private val sendFileMessageUseCase: SendFileMessageUseCase,
     // ADICIONADO: Use case para envio de stickers
     private val sendStickerMessageUseCase: SendStickerMessageUseCase,
+    // ADICIONADO: Use cases para status e digitação
+    private val manageUserStatusUseCase: ManageUserStatusUseCase,
+    private val manageTypingIndicatorUseCase: ManageTypingIndicatorUseCase,
+    // ADICIONADO: Use case para notificações
+    private val sendNotificationUseCase: SendNotificationUseCase,
     // FIM ADICIONADO
     private val addReactionUseCase: AddReactionUseCase,
     private val prefetchMessagesUseCase: PrefetchMessagesUseCase,
@@ -83,6 +91,25 @@ class ChatViewModel @Inject constructor(
     private val _showRecordingOverlay = MutableStateFlow(false)
     val showRecordingOverlay: StateFlow<Boolean> = _showRecordingOverlay
 
+    // ADICIONADO: Estados para status do usuário e digitação
+    private val _otherUserOnlineStatus = MutableStateFlow(false)
+    val otherUserOnlineStatus: StateFlow<Boolean> = _otherUserOnlineStatus
+
+    private val _otherUserTypingStatus = MutableStateFlow(false)
+    val otherUserTypingStatus: StateFlow<Boolean> = _otherUserTypingStatus
+
+    private val _otherUserLastSeen = MutableStateFlow<String?>(null)
+    val otherUserLastSeen: StateFlow<String?> = _otherUserLastSeen
+
+    private val _isCurrentUserTyping = MutableStateFlow(false)
+    val isCurrentUserTyping: StateFlow<Boolean> = _isCurrentUserTyping
+
+    // ADICIONADO: Job para heartbeat de status online
+    private var heartbeatJob: kotlinx.coroutines.Job? = null
+    // ADICIONADO: Job para definir offline após delay
+    private var offlineJob: kotlinx.coroutines.Job? = null
+    // FIM ADICIONADO
+
     fun initialize(roomId: String, currentUserId: String, otherUserId: String) {
         this.roomId = roomId
         this.currentUserId = currentUserId
@@ -100,6 +127,17 @@ class ChatViewModel @Inject constructor(
 
                 // Create the room if needed
                 initializeChatUseCase(roomId, currentUserId, otherUserId)
+
+                // ADICIONADO: Inicializar status do usuário
+                initializeUserStatus(currentUserId, otherUserId)
+                
+                // DEBUG: Forçar online para testar interface
+                kotlinx.coroutines.delay(2000)
+                Log.d(tag, "=== DEBUG: FORÇANDO ONLINE ===")
+                _otherUserOnlineStatus.value = true
+                _otherUserTypingStatus.value = false
+                _otherUserLastSeen.value = null
+                Log.d(tag, "Estados DEBUG: online=true, typing=false, lastSeen=null")
             } catch (e: Exception) {
                 logger(tag, "Error initializing chat: $e")
                 _chatState.value = ChatState.Error("Failed to initialize chat: ${e.message}")
@@ -171,6 +209,9 @@ class ChatViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // CORRIGIDO: Para indicador de digitação ao enviar mensagem
+                onUserStoppedTyping()
+                
                 roomId?.let { roomId ->
                     currentUserId?.let { userId ->
                         sendTextMessageUseCase(
@@ -431,6 +472,9 @@ class ChatViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                // CORRIGIDO: Para indicador de digitação ao enviar sticker
+                onUserStoppedTyping()
+                
                 roomId?.let { roomId ->
                     currentUserId?.let { userId ->
                         otherUserId?.let { otherUserId ->
@@ -441,6 +485,17 @@ class ChatViewModel @Inject constructor(
                                 senderName = senderName,
                                 recipientsToken = recipientsToken,
                                 otherUserId = otherUserId,
+                                profileUrl = profileUrl
+                            )
+                            
+                            // ADICIONADO: Enviar notificação push para sticker
+                            sendNotificationUseCase(
+                                recipientsToken = recipientsToken,
+                                title = senderName,
+                                body = "🎭 Enviou um sticker",
+                                roomId = roomId,
+                                recipientsUserId = otherUserId,
+                                sendersUserId = userId,
                                 profileUrl = profileUrl
                             )
                         }
@@ -500,9 +555,281 @@ class ChatViewModel @Inject constructor(
         prefetchMessagesUseCase(roomId)
     }
 
+    // ADICIONADO: Funções para gerenciar status e digitação
+    private fun initializeUserStatus(currentUserId: String, otherUserId: String) {
+        Log.d(tag, "=== INICIALIZANDO STATUS ===")
+        Log.d(tag, "Current User: $currentUserId")
+        Log.d(tag, "Other User: $otherUserId")
+        
+        viewModelScope.launch {
+            try {
+                // Define o usuário atual como online
+                Log.d(tag, "Definindo usuário $currentUserId como online...")
+                val result = manageUserStatusUseCase.setUserOnline(currentUserId)
+                if (result.isSuccess) {
+                    Log.d(tag, "✅ Usuário $currentUserId definido como online com sucesso")
+                } else {
+                    Log.e(tag, "❌ Erro ao definir usuário como online: ${result.exceptionOrNull()}")
+                }
+                
+                // Inicia o heartbeat para manter o usuário online
+                startHeartbeat(currentUserId)
+            } catch (e: Exception) {
+                Log.e(tag, "Erro na inicialização do status: ${e.message}", e)
+            }
+        }
+
+        // Observa o status do outro usuário em uma coroutine separada
+        viewModelScope.launch {
+            try {
+                Log.d(tag, "Iniciando observação CONTÍNUA do status do usuário $otherUserId...")
+                manageUserStatusUseCase.observeUserStatus(otherUserId).collect { userStatus ->
+                    Log.d(tag, "=== MUDANÇA DE STATUS DETECTADA ===")
+                    Log.d(tag, "Status recebido para $otherUserId: $userStatus")
+                    Log.d(tag, "Timestamp: ${System.currentTimeMillis()}")
+                    
+                    if (userStatus != null) {
+                        Log.d(tag, "Status válido - IsOnline: ${userStatus.isOnline}, UpdatedAt: ${userStatus.updatedAt}")
+                        
+                        // CORRIGIDO: Força atualização dos estados sempre
+                        val wasOnline = _otherUserOnlineStatus.value
+                        _otherUserOnlineStatus.value = userStatus.isOnline
+                        
+                        Log.d(tag, "Status mudou de $wasOnline para ${userStatus.isOnline}")
+                        
+                        // Só mostra "visto por último" se o usuário estiver offline
+                        if (!userStatus.isOnline && userStatus.lastSeen != null) {
+                            val formattedTime = formatLastSeen(userStatus.lastSeen!!)
+                            _otherUserLastSeen.value = formattedTime
+                            Log.d(tag, "Definido como offline - último visto: $formattedTime")
+                        } else {
+                            _otherUserLastSeen.value = null
+                            Log.d(tag, "Definido como online - último visto limpo")
+                        }
+                    } else {
+                        Log.w(tag, "Status do usuário $otherUserId é null - definindo como offline")
+                        _otherUserOnlineStatus.value = false
+                        _otherUserLastSeen.value = null
+                    }
+                    
+                    Log.d(tag, "Estados ATUALIZADOS: online=${_otherUserOnlineStatus.value}, typing=${_otherUserTypingStatus.value}, lastSeen=${_otherUserLastSeen.value}")
+                    Log.d(tag, "=== FIM MUDANÇA DE STATUS ===")
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Erro na observação do status: ${e.message}", e)
+                // ADICIONADO: Tentar reconectar após erro
+                kotlinx.coroutines.delay(5000)
+                Log.d(tag, "Tentando reconectar observação de status...")
+                initializeUserStatus(currentUserId, otherUserId)
+            }
+        }
+
+        // Observa indicadores de digitação na sala
+        roomId?.let { roomId ->
+            viewModelScope.launch {
+                manageTypingIndicatorUseCase.observeTypingIndicators(roomId, currentUserId).collect { indicators ->
+                    // Verifica se o outro usuário está digitando
+                    val isOtherUserTyping = indicators.any { it.userId == otherUserId }
+                    Log.d(tag, "Indicadores de digitação: ${indicators.size} encontrados")
+                    Log.d(tag, "Outro usuário ($otherUserId) está digitando: $isOtherUserTyping")
+                    
+                    _otherUserTypingStatus.value = isOtherUserTyping
+                    Log.d(tag, "Estado de digitação atualizado para: ${_otherUserTypingStatus.value}")
+                }
+            }
+            
+            // ADICIONADO: Limpeza periódica de indicadores antigos
+            viewModelScope.launch {
+                while (true) {
+                    kotlinx.coroutines.delay(15000) // A cada 15 segundos
+                    try {
+                        manageTypingIndicatorUseCase.cleanupOldIndicators()
+                        Log.d(tag, "Limpeza de indicadores antigos executada")
+                    } catch (e: Exception) {
+                        Log.e(tag, "Erro na limpeza de indicadores: ${e.message}")
+                    }
+                }
+            }
+        }
+    }
+
+    // CORRIGIDO: Job para controlar timeout de digitação
+    private var typingTimeoutJob: kotlinx.coroutines.Job? = null
+
+    fun onUserStartedTyping() {
+        Log.d(tag, "onUserStartedTyping chamado")
+        
+        // Cancela timeout anterior se existir
+        typingTimeoutJob?.cancel()
+        
+        if (!_isCurrentUserTyping.value) {
+            _isCurrentUserTyping.value = true
+            Log.d(tag, "Definindo usuário como digitando...")
+            
+            viewModelScope.launch {
+                currentUserId?.let { userId ->
+                    roomId?.let { roomId ->
+                        // Aqui você pode obter o nome do usuário de onde for apropriado
+                        val userName = "User" // Substitua pela lógica real para obter o nome
+                        manageTypingIndicatorUseCase.setUserTyping(userId, userName, roomId)
+                        Log.d(tag, "Indicador de digitação enviado para Firestore")
+                    }
+                }
+            }
+        } else {
+            // CORRIGIDO: Mesmo se já estiver digitando, renova o indicador no Firestore
+            Log.d(tag, "Renovando indicador de digitação...")
+            viewModelScope.launch {
+                currentUserId?.let { userId ->
+                    roomId?.let { roomId ->
+                        val userName = "User"
+                        manageTypingIndicatorUseCase.setUserTyping(userId, userName, roomId)
+                        Log.d(tag, "Indicador de digitação renovado no Firestore")
+                    }
+                }
+            }
+        }
+        
+        // CORRIGIDO: Sempre inicia novo timeout, independente do estado anterior
+        typingTimeoutJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(2000) // REDUZIDO: 2 segundos de timeout
+            if (_isCurrentUserTyping.value) {
+                Log.d(tag, "Timeout de digitação atingido - parando indicador")
+                onUserStoppedTyping()
+            }
+        }
+    }
+
+    fun onUserStoppedTyping() {
+        Log.d(tag, "onUserStoppedTyping chamado")
+        
+        // Cancela timeout
+        typingTimeoutJob?.cancel()
+        
+        if (_isCurrentUserTyping.value) {
+            _isCurrentUserTyping.value = false
+            Log.d(tag, "Parando indicador de digitação...")
+            
+            viewModelScope.launch {
+                currentUserId?.let { userId ->
+                    roomId?.let { roomId ->
+                        manageTypingIndicatorUseCase.setUserStoppedTyping(userId, roomId)
+                        Log.d(tag, "Indicador de digitação removido do Firestore")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun formatLastSeen(timestamp: com.google.firebase.Timestamp): String {
+        val now = System.currentTimeMillis()
+        val lastSeenTime = timestamp.toDate().time
+        val diffInMinutes = (now - lastSeenTime) / (1000 * 60)
+
+        return when {
+            diffInMinutes < 1 -> "agora há pouco"
+            diffInMinutes < 60 -> "${diffInMinutes}min"
+            diffInMinutes < 1440 -> "${diffInMinutes / 60}h"
+            else -> "${diffInMinutes / 1440}d"
+        }
+    }
+
+    private fun setUserOffline() {
+        viewModelScope.launch {
+            currentUserId?.let { userId ->
+                // ADICIONADO: Cooldown de 3 segundos antes de definir como offline
+                Log.d(tag, "Iniciando cooldown de 3 segundos antes de definir como offline...")
+                kotlinx.coroutines.delay(3000)
+                
+                Log.d(tag, "Cooldown concluído - definindo usuário $userId como offline")
+                manageUserStatusUseCase.setUserOffline(userId)
+                roomId?.let { roomId ->
+                    manageTypingIndicatorUseCase.setUserStoppedTyping(userId, roomId)
+                }
+            }
+        }
+    }
+
+    private fun startHeartbeat(userId: String) {
+        // Cancela heartbeat anterior se existir
+        heartbeatJob?.cancel()
+        
+        heartbeatJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    // CORRIGIDO: Heartbeat mais frequente para manter online persistente
+                    kotlinx.coroutines.delay(5000) // A cada 5 segundos
+                    manageUserStatusUseCase.updateUserActivity(userId)
+                    Log.d(tag, "Heartbeat enviado - mantendo usuário $userId online")
+                } catch (e: Exception) {
+                    Log.e(tag, "Erro no heartbeat: ${e.message}")
+                    break
+                }
+            }
+        }
+        Log.d(tag, "Heartbeat iniciado para usuário $userId (intervalo: 5s)")
+    }
+
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+    }
+
+    // ADICIONADO: Funções para gerenciar entrada/saída do app
+    fun onAppForeground() {
+        Log.d(tag, "App entrou em foreground - mantendo usuário online")
+        // Cancela job de offline se existir
+        offlineJob?.cancel()
+        offlineJob = null
+        
+        // Garante que está online
+        viewModelScope.launch {
+            currentUserId?.let { userId ->
+                Log.d(tag, "Definindo usuário $userId como online no foreground")
+                manageUserStatusUseCase.setUserOnline(userId)
+                
+                // ADICIONADO: Força atualização do timestamp para garantir detecção
+                kotlinx.coroutines.delay(500) // Pequeno delay para garantir que foi salvo
+                manageUserStatusUseCase.updateUserActivity(userId)
+                
+                // Reinicia heartbeat se não estiver rodando
+                if (heartbeatJob?.isActive != true) {
+                    startHeartbeat(userId)
+                }
+                
+                Log.d(tag, "Status online atualizado e heartbeat reiniciado para $userId")
+            }
+        }
+    }
+
+    fun onAppBackground() {
+        Log.d(tag, "App entrou em background - iniciando timer para offline")
+        // Cancela job anterior se existir
+        offlineJob?.cancel()
+        
+        // Inicia timer para definir como offline após delay
+        offlineJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(10000) // 10 segundos de delay
+            Log.d(tag, "Timer de background concluído - definindo como offline")
+            currentUserId?.let { userId ->
+                manageUserStatusUseCase.setUserOffline(userId)
+                roomId?.let { roomId ->
+                    manageTypingIndicatorUseCase.setUserStoppedTyping(userId, roomId)
+                }
+            }
+        }
+    }
+    // FIM ADICIONADO
+
     override fun onCleared() {
         super.onCleared()
         Log.d(tag, "onCleared: Removing Firestore message listener and media recorder")
+        
+        // CORRIGIDO: Para heartbeat mas NÃO define como offline imediatamente
+        // O usuário deve ficar online por mais tempo quando sair
+        stopHeartbeat()
+        // REMOVIDO: setUserOffline() - não chama mais aqui
+        
         viewModelScope.launch {
             messageListener?.let {
                 removeMessageListenerUseCase(it)

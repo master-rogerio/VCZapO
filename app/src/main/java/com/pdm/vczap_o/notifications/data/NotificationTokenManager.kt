@@ -15,28 +15,47 @@ object NotificationTokenManager {
      */
     fun initializeAndUpdateToken(context: Context, userId: String, newToken: String) {
         val cachedToken = getStoredToken(context)
-        if (cachedToken == newToken) {
-            Log.d(TAG, "Token has not changed, no updates needed.")
-            return
+        Log.d("TOKEN_DEBUG", "=== VERIFICANDO TOKEN ===")
+        Log.d("TOKEN_DEBUG", "Token em cache: $cachedToken")
+        Log.d("TOKEN_DEBUG", "Novo token: $newToken")
+        Log.d("TOKEN_DEBUG", "Tokens iguais: ${cachedToken == newToken}")
+        
+        if (cachedToken == newToken && !newToken.isEmpty()) {
+            Log.d("TOKEN_DEBUG", "✅ Token não mudou, mas vamos atualizar mesmo assim para debug")
+            // TEMPORÁRIO: Para debug, sempre atualizar
+            updateUserToken(context, userId, newToken)
+        } else {
+            Log.d("TOKEN_DEBUG", "🔄 Token mudou ou é novo - atualizando")
+            updateUserToken(context, userId, newToken)
         }
-        updateUserToken(context, userId, newToken)
     }
 
     /**
      * Updates the user document in Firestore with the new FCM token and caches it locally.
      */
     fun updateUserToken(context: Context, userId: String, token: String) {
-        if (userId.isEmpty() || token.isEmpty()) return
+        Log.d("TOKEN_DEBUG", "=== SALVANDO TOKEN ===")
+        Log.d("TOKEN_DEBUG", "UserId: $userId")
+        Log.d("TOKEN_DEBUG", "Token: $token")
+        Log.d("TOKEN_DEBUG", "Token length: ${token.length}")
+        
+        if (userId.isEmpty() || token.isEmpty()) {
+            Log.e("TOKEN_DEBUG", "❌ UserId ou Token vazio - não salvando")
+            return
+        }
 
         val firestore = FirebaseFirestore.getInstance()
         val userDocRef = firestore.collection("users").document(userId)
 
+        Log.d("TOKEN_DEBUG", "Atualizando documento: users/$userId")
         userDocRef.update("deviceToken", token)
             .addOnSuccessListener {
+                Log.d("TOKEN_DEBUG", "✅ Token salvo com sucesso no Firestore")
                 Log.d(TAG, "FCM token updated successfully.")
                 cacheToken(context, token)
             }
             .addOnFailureListener { e ->
+                Log.e("TOKEN_DEBUG", "❌ Erro ao salvar token no Firestore: ${e.message}")
                 Log.e(TAG, "Error updating user token", e)
             }
     }

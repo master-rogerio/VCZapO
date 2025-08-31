@@ -52,6 +52,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -80,6 +84,9 @@ fun MessageInput(
     // ADICIONADO: Parâmetros para seleção de emojis e stickers separados
     onEmojiClick: (String) -> Unit,
     onStickerClick: (String) -> Unit,
+    // ADICIONADO: Callbacks para digitação
+    onUserStartedTyping: () -> Unit = {},
+    onUserStoppedTyping: () -> Unit = {},
     // FIM ADICIONADO
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
@@ -91,6 +98,17 @@ fun MessageInput(
     var showMediaDialog by remember { mutableStateOf(false) }
     // ADICIONADO: Estado para controlar o emoji picker
     var showEmojiPicker by remember { mutableStateOf(false) }
+    // ADICIONADO: Estados para controlar digitação
+    var isTyping by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Para de digitar quando o texto fica vazio
+    LaunchedEffect(messageText) {
+        if (messageText.isBlank() && isTyping) {
+            isTyping = false
+            onUserStoppedTyping()
+        }
+    }
     // FIM ADICIONADO
     // REMOVIDO: Código de localização removido conforme solicitado
 //    Check if keyboard is shown
@@ -128,7 +146,22 @@ fun MessageInput(
     ) {
         BasicTextField(
             value = messageText,
-            onValueChange = onMessageChange,
+            onValueChange = { newText ->
+                onMessageChange(newText)
+                
+                // CORRIGIDO: Lógica de detecção de digitação melhorada
+                if (newText.isNotBlank()) {
+                    // Sempre chama onUserStartedTyping quando há texto
+                    // O ViewModel vai gerenciar se já está digitando ou não
+                    onUserStartedTyping()
+                    isTyping = true
+                } else if (isTyping) {
+                    // Para imediatamente quando o texto fica vazio
+                    isTyping = false
+                    onUserStoppedTyping()
+                }
+                // FIM ADICIONADO
+            },
             // ALTERAÇÃO: Suporte a múltiplas linhas para quebras de linha
             maxLines = 5,
             singleLine = false,
@@ -298,6 +331,8 @@ fun PrevInputToolBar() {
         onFileClick = {},
         onEmojiClick = {},
         onStickerClick = {},
+        onUserStartedTyping = {},
+        onUserStoppedTyping = {},
         // FIM ADICIONADO
         roomId = "",
         userData = NewUser(),
