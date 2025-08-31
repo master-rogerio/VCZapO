@@ -137,30 +137,20 @@ fun HomeScreen(
     }
     LaunchedEffect(retrievedToken) {
         try {
-            // ADICIONADO: Debug do token FCM
-            Log.d("FCM_DEBUG", "=== TOKEN FCM OBTIDO ===")
-            Log.d("FCM_DEBUG", "Token: $retrievedToken")
-            Log.d("FCM_DEBUG", "Token length: ${retrievedToken.length}")
-            Log.d("FCM_DEBUG", "Token válido: ${retrievedToken.isNotEmpty()}")
-            
             if (user != null) {
-                Log.d("FCM_DEBUG", "Salvando token para usuário: ${user.uid}")
                 NotificationTokenManager.initializeAndUpdateToken(
                     context, user.uid, retrievedToken
                 )
             } else {
-                Log.w("FCM_DEBUG", "❌ Usuário não logado - não pode salvar token")
+                Log.w(tag, "User not signed in; cannot update token.")
             }
         } catch (e: Exception) {
-            Log.e("FCM_DEBUG", "❌ Erro ao processar token: ${e.message}")
             logger(tag, e.message.toString())
         }
         try {
             getFCMToken()
-            val health = notificationRepository.checkServerHealth()
-            Log.d("SERVER_DEBUG", "✅ Servidor online: $health")
+            notificationRepository.checkServerHealth()
         } catch (e: Exception) {
-            Log.e("SERVER_DEBUG", "❌ Servidor offline: ${e.message}")
             logger(tag, e.message.toString())
         }
     }
@@ -189,21 +179,21 @@ fun HomeScreen(
     Scaffold(topBar = {
         Row(
             modifier = Modifier
-                .height(100.dp)
+                .height(80.dp)
                 .fillMaxWidth(1f)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 10.dp)
+                .padding(top = 15.dp)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row {
                 Text(
-                    "V.C. Zap-O",
+                    "V.C Zap-o",
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 24.sp,
-                    textAlign = TextAlign.End,
+                    textAlign = TextAlign.Center
                 )
                 if (netActivity.isNotBlank()) {
                     Text(
@@ -342,7 +332,6 @@ fun HomeScreen(
         }
     }
 }
-
 
 @Composable
 fun GroupListItem(group: Group, navController: NavController) {

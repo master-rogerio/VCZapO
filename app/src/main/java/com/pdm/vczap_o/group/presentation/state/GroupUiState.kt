@@ -1,14 +1,15 @@
 package com.pdm.vczap_o.group.presentation.state
 
-/**
- * Representa os possíveis estados da UI para as telas de grupo.
- *
- * @property isLoading Indica se uma operação está em andamento (ex: criando um grupo).
- * @property error Contém uma mensagem de erro, se alguma operação falhar.
- * @property groupCreationSuccess Indica se um grupo foi criado com sucesso.
- */
+import com.pdm.vczap_o.core.model.User
+
 data class GroupUiState(
     val isLoading: Boolean = false,
+    val success: Boolean = false,
     val error: String? = null,
-    val groupCreationSuccess: Boolean = false
+
+    // ADIÇÃO INICIA AQUI
+    val allUsers: List<User> = emptyList(), // Guarda a lista de todos os utilizadores
+    val selectedMembers: Set<String> = emptySet() // Guarda os IDs dos utilizadores selecionados
+    // ADIÇÃO TERMINA AQUI
 )
+

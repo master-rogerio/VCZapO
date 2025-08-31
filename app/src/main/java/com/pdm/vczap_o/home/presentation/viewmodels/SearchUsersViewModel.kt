@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.home.domain.model.SearchUsersUiState
-import com.pdm.vczap_o.home.domain.usecase.SearchUsersUseCase
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
