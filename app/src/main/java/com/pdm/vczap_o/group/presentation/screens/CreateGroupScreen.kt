@@ -20,13 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pdm.vczap_o.core.model.User
-import com.pdm.vczap_o.group.presentation.viewmodels.GroupViewModel
+import com.pdm.vczap_o.group.presentation.viewmodels.CreateGroupViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateGroupScreen(
     navController: NavController,
-    groupViewModel: GroupViewModel = hiltViewModel()
+    groupViewModel: CreateGroupViewModel = hiltViewModel()
 ) {
     val uiState by groupViewModel.uiState.collectAsState()
     var groupName by remember { mutableStateOf("") }
