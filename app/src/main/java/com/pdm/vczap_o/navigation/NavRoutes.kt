@@ -94,3 +94,8 @@ data class ImagePreviewScreen(
 @Serializable
 data class CameraXScreenDC(val roomId: String, val profileUrl: String, val deviceToken: String)
 
+/**
+ * Represents the screen for creating a new group.
+ */
+@Serializable
+object CreateGroupScreen

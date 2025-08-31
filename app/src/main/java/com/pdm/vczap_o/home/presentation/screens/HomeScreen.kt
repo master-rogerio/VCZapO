@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,12 +22,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,23 +60,26 @@ import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.ConnectivityStatus
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.presentation.ConnectivityViewModel
+import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.home.presentation.components.ChatListItem
 import com.pdm.vczap_o.home.presentation.viewmodels.HomeViewModel
 import com.pdm.vczap_o.navigation.AuthScreen
+import com.pdm.vczap_o.navigation.CreateGroupScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SearchUsersScreenDC
 import com.pdm.vczap_o.notifications.data.NotificationTokenManager
 import com.pdm.vczap_o.notifications.data.api.ApiRequestsRepository
 import com.google.firebase.auth.FirebaseAuth
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
     authViewModel: AuthViewModel,
     context: Context,
     chatViewModel: ChatViewModel,
-) {
+)
+
+{
     val homeViewModel: HomeViewModel = hiltViewModel()
     val notificationRepository = ApiRequestsRepository()
     val user = FirebaseAuth.getInstance().currentUser
@@ -232,6 +237,14 @@ fun HomeScreen(
                     modifier = Modifier,
                     dropItems = listOf(
                         DropMenu(
+                            text = "Novo Grupo",
+                            onClick = {
+                                navController.navigate(CreateGroupScreen)
+                                expanded = false
+                            },
+                            icon = Icons.Default.GroupAdd
+                        ),
+                        DropMenu(
                             text = "Profile",
                             onClick = {
                                 navController.navigate(MainScreen(1)) {
@@ -249,11 +262,6 @@ fun HomeScreen(
                             },
                             icon = Icons.Default.Settings
                         ),
-//                        DropMenu(
-//                            text = "notifications",
-//                            onClick = { navController.navigate("notifications") },
-//                            icon = Icons.Default.QrCodeScanner
-//                        ),
                         DropMenu(
                             text = "Logout",
                             onClick = { authViewModel.logout() },
@@ -278,17 +286,41 @@ fun HomeScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (homeUiState.rooms.isNotEmpty()) {
+            if (homeUiState.rooms.isNotEmpty() || homeUiState.groups.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize(),
                 ) {
-                    items(homeUiState.rooms) { room ->
-                        ChatListItem(
-                            room, navController,
-                            chatViewModel = chatViewModel,
-                            homeViewModel = homeViewModel
-                        )
+                    // Seção de Grupos
+                    if (homeUiState.groups.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Grupos",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(homeUiState.groups) { group ->
+                            GroupListItem(group = group, navController = navController)
+                        }
+                    }
+
+                    // Seção de Conversas
+                    if (homeUiState.rooms.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Conversas",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(homeUiState.rooms) { room ->
+                            ChatListItem(
+                                room, navController,
+                                chatViewModel = chatViewModel,
+                                homeViewModel = homeViewModel
+                            )
+                        }
                     }
                 }
             } else if (homeUiState.isLoading) {
@@ -310,3 +342,31 @@ fun HomeScreen(
         }
     }
 }
+
+
+@Composable
+fun GroupListItem(group: Group, navController: NavController) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                // TODO: Navegar para a tela de chat do grupo quando ela for criada
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Groups,
+            contentDescription = "Ícone do Grupo",
+            modifier = Modifier.padding(end = 16.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(text = group.name, fontWeight = FontWeight.Bold)
+            Text(text = "${group.members.size} membros", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
