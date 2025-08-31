@@ -24,7 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhonelinkLock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
@@ -189,21 +191,29 @@ fun HomeScreen(
     Scaffold(topBar = {
         Row(
             modifier = Modifier
-                .height(100.dp)
+                .height(95.dp)
                 .fillMaxWidth(1f)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 10.dp)
-                .padding(horizontal = 10.dp),
+                .padding(top = 25.dp)
+                .padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
+
         ) {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.PhonelinkLock,
+                    contentDescription = "",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(end = 0.1.dp),
+
+                )
                 Text(
                     "V.C. Zap-O",
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     fontWeight = FontWeight.SemiBold,
-                    fontSize = 24.sp,
-                    textAlign = TextAlign.End,
+                    fontSize = 28.sp,
+                    textAlign = TextAlign.Center,
                 )
                 if (netActivity.isNotBlank()) {
                     Text(
@@ -245,7 +255,7 @@ fun HomeScreen(
                             icon = Icons.Default.GroupAdd
                         ),
                         DropMenu(
-                            text = "Profile",
+                            text = "Meu Perfil",
                             onClick = {
                                 navController.navigate(MainScreen(1)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -254,7 +264,7 @@ fun HomeScreen(
                             icon = Icons.Default.Person
                         ),
                         DropMenu(
-                            text = "Settings",
+                            text = "Configurações",
                             onClick = {
                                 navController.navigate(MainScreen(2)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -263,7 +273,7 @@ fun HomeScreen(
                             icon = Icons.Default.Settings
                         ),
                         DropMenu(
-                            text = "Logout",
+                            text = "Sair",
                             onClick = { authViewModel.logout() },
                             icon = Icons.AutoMirrored.Default.Logout
                         ),
@@ -275,7 +285,7 @@ fun HomeScreen(
     }, floatingActionButton = {
         FloatingActionButton(
             onClick = { navController.navigate(SearchUsersScreenDC) },
-            modifier = Modifier.padding(bottom = 20.dp, end = 5.dp)
+            modifier = Modifier.padding(bottom = 0.5.dp, end = 5.dp)
         ) {
             Icon(imageVector = Icons.Default.Add, contentDescription = "Add Chat")
         }

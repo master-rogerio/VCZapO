@@ -53,9 +53,9 @@ fun MainBottomNavScreen(
     initialPage: Int = 0,
 ) {
     val bottomNavItems = listOf(
-        BottomNavItem("home", Icons.AutoMirrored.Default.Chat, "Chats"),
-        BottomNavItem("profileScreen", Icons.Default.Person, "Profile"),
-        BottomNavItem("settings", Icons.Default.Settings, "Settings")
+        BottomNavItem("home", Icons.AutoMirrored.Default.Chat, "Conversas"),
+        BottomNavItem("profileScreen", Icons.Default.Person, "Meu Perfil"),
+        BottomNavItem("settings", Icons.Default.Settings, "Configurações")
     )
 
     val pagerState = rememberPagerState(

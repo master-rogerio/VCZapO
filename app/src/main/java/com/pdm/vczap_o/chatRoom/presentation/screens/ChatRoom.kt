@@ -331,7 +331,7 @@ fun ChatScreen(
                 navController = navController,
                 chatOptionsList = listOf(
                     DropMenu(
-                        text = "View Profile",
+                        text = "Ver Perfil",
                         onClick = {
                             val userJson = Gson().toJson(userData)
                             navController.navigate(OtherProfileScreenDC(userJson)) {

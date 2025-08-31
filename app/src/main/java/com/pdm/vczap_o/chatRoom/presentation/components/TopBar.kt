@@ -57,10 +57,10 @@ fun HeaderBar(
     var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
-            .height(80.dp)
+            .height(95.dp)
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(top = 20.dp),
+            .padding(top = 35.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

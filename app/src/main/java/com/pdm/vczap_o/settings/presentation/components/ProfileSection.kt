@@ -21,7 +21,7 @@ fun ProfileSection(
     onEditProfile: () -> Unit,
     username: String,
 ) {
-    SectionWrapper(title = "Profile", icon = Icons.Default.Person) {
+    SectionWrapper(title = "Meu Perfil", icon = Icons.Default.Person) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -41,7 +41,7 @@ fun ProfileSection(
                 )
             }
             Button(onClick = onEditProfile) {
-                Text("Edit Profile")
+                Text("Editar perfil")
             }
         }
     }

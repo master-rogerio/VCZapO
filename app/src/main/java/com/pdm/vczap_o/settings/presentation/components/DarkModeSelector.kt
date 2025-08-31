@@ -33,7 +33,7 @@ fun DarkModeSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     var selectedMode by remember { mutableStateOf(currentMode) }
-    val options = listOf("System Default", "Light", "Dark")
+    val options = listOf("Padrão do Sistema", "Claro", "Escuro")
 
     Column(
         modifier = Modifier
@@ -51,7 +51,7 @@ fun DarkModeSelector(
             Icon(Icons.Default.LightMode, contentDescription = "")
             Column {
                 Text(
-                    text = "Theme",
+                    text = "Tema",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -65,7 +65,7 @@ fun DarkModeSelector(
         if (expanded) {
             AlertDialog(
                 onDismissRequest = { expanded = !expanded },
-                title = { Text("Choose Theme") },
+                title = { Text("Escolha o tema") },
                 text = {
                     Column {
                         options.forEachIndexed { index, selectionOption ->
@@ -97,7 +97,7 @@ fun DarkModeSelector(
                 },
                 dismissButton = {
                     TextButton(onClick = { expanded = !expanded }) {
-                        Text("Cancel")
+                        Text("Cancelar")
                     }
                 }
             )

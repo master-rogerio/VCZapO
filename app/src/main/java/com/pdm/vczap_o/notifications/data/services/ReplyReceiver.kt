@@ -152,7 +152,7 @@ object ConversationHistoryManager {
     }
 }
 
-val person = Person.Builder().setName("You").build()
+val person = Person.Builder().setName("Você").build()
 
 
 fun generateSender(name: String): Person {

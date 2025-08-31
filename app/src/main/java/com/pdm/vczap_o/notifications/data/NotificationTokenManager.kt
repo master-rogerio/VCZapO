@@ -51,6 +51,7 @@ object NotificationTokenManager {
         userDocRef.update("deviceToken", token)
             .addOnSuccessListener {
                 Log.d("TOKEN_DEBUG", "✅ Token salvo com sucesso no Firestore")
+                Log.d("TOKEN_DEBUG", "✅ TOKEN COMPLETO: $token")
                 Log.d(TAG, "FCM token updated successfully.")
                 cacheToken(context, token)
             }

@@ -135,7 +135,7 @@ fun ChatListItem(
                     )
                     if (room.lastMessage.isNotEmpty()) {
                         Text(
-                            text = if (room.lastMessageSenderId == currentUserId) "You: ${room.lastMessage}" else room.lastMessage,
+                            text = if (room.lastMessageSenderId == currentUserId) "Você: ${room.lastMessage}" else room.lastMessage,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 7.dp, end = 10.dp),
                             fontSize = 13.sp,
