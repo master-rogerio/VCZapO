@@ -18,7 +18,7 @@ object EnhancedCryptoUtils {
     /**
      * Decodifica dados Base64 de forma segura
      */
-    private fun decode(data: String): ByteArray {
+    internal fun decode(data: String): ByteArray {
         return try {
             Base64.decode(data, Base64.NO_WRAP)
         } catch (e: Exception) {

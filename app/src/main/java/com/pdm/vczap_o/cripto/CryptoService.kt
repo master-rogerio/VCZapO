@@ -1,3 +1,4 @@
+// master-rogerio/vczapo/VCZapO-Base-1.0/app/src/main/java/com/pdm/vczap_o/cripto/CryptoService.kt
 package com.pdm.vczap_o.cripto
 
 import android.content.Context
@@ -17,10 +18,22 @@ import javax.inject.Singleton
 class CryptoService @Inject constructor(
     private val context: Context
 ) {
-    
+
     private val tag = "CryptoService"
     private val managers = mutableMapOf<String, EnhancedSignalProtocolManager>()
-    
+
+    // TODO: A implementação de getUserId() deve ser obtida de forma segura, por exemplo,
+    // através de um repositório de autenticação que acessa o Firebase Auth.
+    private var currentUserId: String? = null
+
+    fun setUserId(userId: String) {
+        this.currentUserId = userId
+    }
+
+    fun getUserId(): String {
+        return currentUserId ?: throw IllegalStateException("User ID not set in CryptoService.")
+    }
+
     /**
      * Obtém ou cria um gerenciador para um usuário específico
      */
@@ -38,13 +51,13 @@ class CryptoService @Inject constructor(
             Log.d(tag, "Iniciando inicialização de chaves para usuário $userId")
             val manager = getManager(userId)
             val success = manager.initializeKeys()
-            
+
             if (success) {
                 Log.d(tag, "Chaves inicializadas com sucesso para usuário $userId")
             } else {
                 Log.e(tag, "Falha ao inicializar chaves para usuário $userId")
             }
-            
+
             success
         } catch (e: Exception) {
             Log.e(tag, "Erro ao inicializar chaves para usuário $userId: ${e.message}", e)
@@ -70,20 +83,20 @@ class CryptoService @Inject constructor(
      * Estabelece uma sessão segura entre dois usuários
      */
     suspend fun establishSession(
-        currentUserId: String, 
-        remoteUserId: String, 
+        currentUserId: String,
+        remoteUserId: String,
         preKeyBundle: PreKeyBundle
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             val manager = getManager(currentUserId)
             val success = manager.establishSession(remoteUserId, preKeyBundle)
-            
+
             if (success) {
                 Log.d(tag, "Sessão estabelecida entre $currentUserId e $remoteUserId")
             } else {
                 Log.e(tag, "Falha ao estabelecer sessão entre $currentUserId e $remoteUserId")
             }
-            
+
             success
         } catch (e: Exception) {
             Log.e(tag, "Erro ao estabelecer sessão: ${e.message}", e)
@@ -102,13 +115,13 @@ class CryptoService @Inject constructor(
         try {
             val manager = getManager(currentUserId)
             val encryptedMessage = manager.encryptMessage(remoteUserId, message)
-            
+
             if (encryptedMessage != null) {
                 Log.d(tag, "Mensagem criptografada com sucesso")
             } else {
                 Log.e(tag, "Falha ao criptografar mensagem")
             }
-            
+
             encryptedMessage
         } catch (e: Exception) {
             // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de criptografia
@@ -132,21 +145,21 @@ class CryptoService @Inject constructor(
         try {
             // ALTERAÇÃO 28/08/2025 R - Decriptografia com inicialização explícita de chaves
             val manager = getManager(currentUserId)
-            
+
             // Garante que as chaves estejam inicializadas antes da decriptografia
             if (!manager.isInitialized()) {
                 Log.d(tag, "Inicializando chaves para usuário $currentUserId antes da decriptografia")
                 manager.initializeKeys()
             }
-            
+
             val decryptedMessage = manager.decryptMessage(senderId, encryptedContent, encryptionType)
-            
+
             if (decryptedMessage != null) {
                 Log.d(tag, "Mensagem decriptografada com sucesso de $senderId")
             } else {
                 Log.w(tag, "Falha ao decriptografar mensagem de $senderId")
             }
-            
+
             decryptedMessage
             // FIM ALTERAÇÃO 28/08/2025 R
         } catch (e: Exception) {
@@ -166,13 +179,13 @@ class CryptoService @Inject constructor(
         try {
             val manager = getManager(userId)
             val publicKeys = manager.getPublicKeysForPublication()
-            
+
             if (publicKeys != null) {
                 Log.d(tag, "Chaves públicas obtidas para usuário $userId")
             } else {
                 Log.e(tag, "Falha ao obter chaves públicas para usuário $userId")
             }
-            
+
             publicKeys
         } catch (e: Exception) {
             Log.e(tag, "Erro ao obter chaves públicas: ${e.message}", e)
@@ -187,11 +200,11 @@ class CryptoService @Inject constructor(
         try {
             val manager = getManager(userId)
             val rotated = manager.checkAndRotateKeys()
-            
+
             if (rotated) {
                 Log.d(tag, "Chaves rotacionadas para usuário $userId")
             }
-            
+
             rotated
         } catch (e: Exception) {
             Log.e(tag, "Erro ao verificar rotação de chaves: ${e.message}", e)
@@ -206,11 +219,11 @@ class CryptoService @Inject constructor(
         try {
             val manager = getManager(userId)
             val isValid = manager.verifyKeyIntegrity()
-            
+
             if (!isValid) {
                 Log.e(tag, "Integridade das chaves comprometida para usuário $userId")
             }
-            
+
             isValid
         } catch (e: Exception) {
             Log.e(tag, "Erro ao verificar integridade: ${e.message}", e)
@@ -242,17 +255,17 @@ class CryptoService @Inject constructor(
             Log.e(tag, "Erro ao limpar gerenciadores: ${e.message}", e)
         }
     }
-    
+
     /**
      * Limpa completamente as chaves de um usuário (para debugging/reset)
      */
     suspend fun clearUserKeys(userId: String): Boolean = withContext(Dispatchers.IO) {
         try {
             Log.d(tag, "Limpando todas as chaves para usuário $userId")
-            
+
             // Remove do cache de gerenciadores
             managers.remove(userId)
-            
+
             // Limpa SharedPreferences criptografadas
             val prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
                 "signal_store_$userId",
@@ -262,7 +275,7 @@ class CryptoService @Inject constructor(
                 androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
             prefs.edit().clear().apply()
-            
+
             // Limpa chaves do Firebase
             try {
                 val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
@@ -274,7 +287,7 @@ class CryptoService @Inject constructor(
             } catch (e: Exception) {
                 Log.w(tag, "Erro ao remover chaves do Firebase: ${e.message}")
             }
-            
+
             Log.d(tag, "Limpeza completa realizada para usuário $userId")
             true
         } catch (e: Exception) {
