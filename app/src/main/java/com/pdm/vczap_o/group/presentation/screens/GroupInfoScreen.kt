@@ -17,12 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pdm.vczap_o.group.presentation.components.MemberListItem
-import com.pdm.vczap_o.group.presentation.viewmodels.GroupViewModel
+import com.pdm.vczap_o.group.presentation.viewmodels.GroupDetailsViewModel
 
 @Composable
 fun GroupInfoScreen(
     groupId: String, // Você deve passar o ID do grupo para esta tela
-    viewModel: GroupViewModel = hiltViewModel()
+    viewModel: GroupDetailsViewModel = hiltViewModel()
 ) {
     // Este efeito será executado uma vez para carregar os dados do grupo
     LaunchedEffect(key1 = groupId) {
@@ -47,13 +47,18 @@ fun GroupInfoScreen(
         Column {
             // Usa o nome do grupo do estado
             Text(text = uiState.currentGroup!!.name)
+            // LINHA DE DIAGNÓSTICO TEMPORÁRIA
+            Text(text = "É administrador? ${viewModel.isCurrentUserAdmin()}")
             // ... aqui você pode adicionar mais informações do grupo ...
 
             // Usa a lista de membros do estado
             LazyColumn {
-                items(uiState.members) { member ->
-                    // CORREÇÃO FINAL: Passa o parâmetro 'member' corretamente
-                    MemberListItem(member = member)
+                items(uiState.groupMembers) { member ->
+                    MemberListItem(
+                        member = member,
+                        showRemoveButton = viewModel.canRemoveMember(member.userId),
+                        onRemoveClick = { viewModel.removeMember(member.userId) }
+                    )
                 }
             }
         }

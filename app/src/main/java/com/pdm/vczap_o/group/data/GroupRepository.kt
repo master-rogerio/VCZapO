@@ -4,6 +4,7 @@ package com.pdm.vczap_o.group.data
 
 import com.pdm.vczap_o.group.data.model.Group
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.pdm.vczap_o.group.domain.usecase.GroupDetails
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -77,13 +78,21 @@ class GroupRepository @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
-    // Funções placeholder que você pode implementar no futuro
     suspend fun addMember(groupId: String, userId: String): Result<Unit> {
         return Result.success(Unit)
     }
 
+    /**
+     * Remove um membro de um grupo no Firestore.
+     */
     suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
-        return Result.success(Unit)
+        return try {
+            val groupRef = groupsCollection.document(groupId)
+            groupRef.update("members.$userId", FieldValue.delete()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     fun getGroupDetailsWithMembers(groupId: String): Flow<Result<GroupDetails>> = callbackFlow {
