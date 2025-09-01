@@ -10,7 +10,7 @@ Repositório para o quinto trabalho da disciplina Programação para Dispositivo
 
 <br>
 <div align="center">
-  <img src="https://logopng.com.br/logos/whatsapp-33.png" alt="VCZapO Logo" width="300"/>
+  <img src="extras/pLockIcon.png" alt="VCZapO Logo" width="300"/>
 </div>
 
 
