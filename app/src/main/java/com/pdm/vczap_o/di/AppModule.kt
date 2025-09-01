@@ -16,6 +16,8 @@ import com.pdm.vczap_o.home.data.SearchUsersRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.pdm.vczap_o.cripto.GroupSessionManager
+import com.pdm.vczap_o.group.data.repository.GroupMessageRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -93,5 +95,23 @@ object AppModule {
     fun providesGetGroupsUseCase(groupRepository: GroupRepository): GetGroupsUseCase =
         GetGroupsUseCase(groupRepository)
 
+    @Provides
+    @Singleton
+    fun provideGroupMessageRepository(
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        groupSessionManager: GroupSessionManager
+    ): GroupMessageRepository {
+        return GroupMessageRepository(firestore, auth, groupSessionManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGroupSessionManager(
+        @ApplicationContext appContext: Context,
+        cryptoService: CryptoService
+    ): GroupSessionManager {
+        return GroupSessionManager(appContext, cryptoService)
+    }
 }
 

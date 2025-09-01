@@ -1,16 +1,22 @@
-// app/src/main/java/com/pdm/vczap_o/group/presentation/screens/GroupChatScreen.kt
 package com.pdm.vczap_o.group.presentation.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.pdm.vczap_o.group.presentation.components.GroupMessagesList
 import com.pdm.vczap_o.group.presentation.viewmodels.GroupChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,6 +27,8 @@ fun GroupChatScreen(
     groupChatViewModel: GroupChatViewModel = hiltViewModel()
 ) {
     val uiState by groupChatViewModel.uiState.collectAsState()
+    var messageText by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
 
     LaunchedEffect(groupId) {
         groupChatViewModel.initialize(groupId)
@@ -42,6 +50,44 @@ fun GroupChatScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            // Campo de entrada de mensagem
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = messageText,
+                    onValueChange = { messageText = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Digite uma mensagem...") },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(
+                        onSend = {
+                            if (messageText.isNotBlank()) {
+                                groupChatViewModel.sendMessage(messageText)
+                                messageText = ""
+                            }
+                        }
+                    )
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                IconButton(
+                    onClick = {
+                        if (messageText.isNotBlank()) {
+                            groupChatViewModel.sendMessage(messageText)
+                            messageText = ""
+                        }
+                    }
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Enviar")
+                }
+            }
         }
     ) { paddingValues ->
         Box(
@@ -69,19 +115,27 @@ fun GroupChatScreen(
                 }
 
                 else -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                    ) {
-                        Text("Chat do grupo: ${uiState.groupName ?: groupId}")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("ID do grupo: ${uiState.groupId ?: "N/A"}")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Mensagens: ${uiState.messages.size}")
-
-                        // Aqui você pode implementar a interface do chat
-                        // Por exemplo, lista de mensagens, campo de entrada, etc.
+                    // Lista de mensagens
+                    if (uiState.messages.isNotEmpty()) {
+                        GroupMessagesList(
+                            messages = uiState.messages,
+                            currentUserId = groupChatViewModel.getCurrentUserId(),
+                            modifier = Modifier.fillMaxSize(),
+                            scrollState = listState,
+                            groupId = groupId,
+                            groupChatViewModel = groupChatViewModel
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Nenhuma mensagem ainda. Seja o primeiro a enviar uma mensagem!",
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
                     }
                 }
             }

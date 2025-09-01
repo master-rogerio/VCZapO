@@ -8,6 +8,7 @@ import java.security.SecureRandom
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import com.google.firebase.firestore.FirebaseFirestore
+import jakarta.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,6 +16,7 @@ import kotlinx.coroutines.withContext
  * Gerencia a criptografia e chaves para chats em grupo.
  * Usa uma chave de sessão de grupo compartilhada entre todos os membros.
  */
+@Singleton
 class GroupSessionManager(
     private val context: Context,
     private val cryptoService: CryptoService
