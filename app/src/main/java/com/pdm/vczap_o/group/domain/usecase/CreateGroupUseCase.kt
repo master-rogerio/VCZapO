@@ -1,30 +1,29 @@
+// app/src/main/java/com/pdm/vczap_o/group/domain/usecase/CreateGroupUseCase.kt
+
 package com.pdm.vczap_o.group.domain.usecase
 
 import com.pdm.vczap_o.group.data.GroupRepository
 import com.pdm.vczap_o.group.data.model.Group
 import javax.inject.Inject
 
-/**
- * Caso de uso para criar um novo grupo.
- *
- * Esta classe encapsula a lógica de negócio específica para a criação de um grupo.
- * Ela depende do GroupRepository para interagir com a camada de dados.
- */
 class CreateGroupUseCase @Inject constructor(
     private val repository: GroupRepository
 ) {
     /**
-     * Permite que a classe seja chamada como uma função (ex: createGroupUseCase(meuGrupo)).
+     * Invoca o caso de uso para criar um novo grupo.
+     * O repositório será responsável por gerar o ID do grupo.
      */
-    suspend operator fun invoke(group: Group): Result<Unit> {
-        // Validação de Lógica de Negócio (Exemplo)
-        // Antes de simplesmente salvar, poderíamos adicionar regras aqui.
-        // Por exemplo, verificar se o nome do grupo não está vazio.
-        if (group.name.isBlank()) {
-            return Result.failure(IllegalArgumentException("O nome do grupo não pode estar em branco."))
+    suspend operator fun invoke(name: String, memberIds: List<String>): Result<String> {
+        return try {
+            val group = Group(
+                name = name,
+                createdBy = memberIds.firstOrNull() ?: "",
+                members = memberIds.associateWith { false }
+            )
+            val result = repository.createGroup(group)
+            result.map { group.id } // Retorna o ID do grupo criado
+        } catch (e: Exception) {
+            Result.failure(e)
         }
-
-        // Se a validação passar, chama o repositório para criar o grupo no Firestore.
-        return repository.createGroup(group)
     }
 }

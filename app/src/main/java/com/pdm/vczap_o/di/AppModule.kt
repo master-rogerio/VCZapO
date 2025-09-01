@@ -12,9 +12,12 @@ import com.pdm.vczap_o.group.domain.usecase.AddMemberUseCase
 import com.pdm.vczap_o.group.domain.usecase.CreateGroupUseCase
 import com.pdm.vczap_o.group.domain.usecase.GetGroupsUseCase
 import com.pdm.vczap_o.group.domain.usecase.RemoveMemberUseCase
+import com.pdm.vczap_o.home.data.SearchUsersRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.pdm.vczap_o.cripto.GroupSessionManager
+import com.pdm.vczap_o.group.data.repository.GroupMessageRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -26,88 +29,81 @@ import com.pdm.vczap_o.home.data.RoomRepository
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    // --- Providers de Firebase & Context ---
     @Provides
     @Singleton
-    fun provideFirebaseAuth(): FirebaseAuth {
-        return FirebaseAuth.getInstance()
-    }
+    fun provideFirebaseAuth(): FirebaseAuth = FirebaseAuth.getInstance()
 
     @Provides
     @Singleton
-    fun provideFirebaseFirestore(): FirebaseFirestore {
-        return FirebaseFirestore.getInstance()
-    }
+    fun provideFirebaseFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 
     @Provides
     @Singleton
-    fun provideFirebaseStorage(): FirebaseStorage {
-        return FirebaseStorage.getInstance()
-    }
+    fun provideFirebaseStorage(): FirebaseStorage = FirebaseStorage.getInstance()
 
     @Provides
     @Singleton
-    fun provideContext(@ApplicationContext appContext: Context): Context {
-        return appContext
-    }
+    fun provideContext(@ApplicationContext appContext: Context): Context = appContext
+
+    // --- Providers de Base de Dados & DataStore ---
+    @Provides
+    @Singleton
+    fun provideMessageDao(@ApplicationContext appContext: Context): MessageDao =
+        ChatDatabase.getDatabase(appContext).messageDao()
 
     @Provides
     @Singleton
-    fun provideMessageDao(@ApplicationContext appContext: Context): MessageDao {
-        return ChatDatabase.getDatabase(appContext).messageDao()
-    }
+    fun provideDataStore(@ApplicationContext appContext: Context): DataStore<Preferences> =
+        appContext.applicationContext.dataStore
+
+    // --- Providers de Serviços ---
+    @Provides
+    @Singleton
+    fun provideCryptoService(@ApplicationContext appContext: Context): CryptoService =
+        CryptoService(appContext)
+
+    // --- Providers de Repositórios ---
+    @Provides
+    @Singleton
+    fun provideSearchUsersRepository(firestore: FirebaseFirestore): SearchUsersRepository =
+        SearchUsersRepository(firestore)
 
     @Provides
     @Singleton
-    fun provideDataStore(@ApplicationContext appContext: Context): DataStore<Preferences> {
-        return appContext.applicationContext.dataStore
-    }
+    fun providesGroupRepository(firestore: FirebaseFirestore): GroupRepository =
+        GroupRepository(firestore)
+
+    // --- Providers de Casos de Uso (UseCases) ---
+    @Provides
+    @Singleton
+    fun providesCreateGroupUseCase(groupRepository: GroupRepository): CreateGroupUseCase =
+        CreateGroupUseCase(groupRepository)
 
     @Provides
     @Singleton
-    fun provideCryptoService(@ApplicationContext appContext: Context): CryptoService {
-        return CryptoService(appContext)
-    }
-
-
-    // ------------------ GRUPOS ------------------
-    @Provides
-    @Singleton
-    fun providesGroupRepository(
-        firestore: FirebaseFirestore
-    ): GroupRepository {
-        return GroupRepository(firestore)
-    }
+    fun providesAddMemberUseCase(groupRepository: GroupRepository): AddMemberUseCase =
+        AddMemberUseCase(groupRepository)
 
     @Provides
     @Singleton
-    fun providesCreateGroupUseCase(
-        groupRepository: GroupRepository
-    ): CreateGroupUseCase {
-        return CreateGroupUseCase(groupRepository)
-    }
+    fun providesRemoveMemberUseCase(groupRepository: GroupRepository): RemoveMemberUseCase =
+        RemoveMemberUseCase(groupRepository)
 
     @Provides
     @Singleton
-    fun providesAddMemberUseCase(
-        groupRepository: GroupRepository
-    ): AddMemberUseCase {
-        return AddMemberUseCase(groupRepository)
-    }
+    fun providesGetGroupsUseCase(groupRepository: GroupRepository): GetGroupsUseCase =
+        GetGroupsUseCase(groupRepository)
 
     @Provides
     @Singleton
-    fun providesRemoveMemberUseCase(
-        groupRepository: GroupRepository
-    ): RemoveMemberUseCase {
-        return RemoveMemberUseCase(groupRepository)
-    }
-
-    @Provides
-    @Singleton
-    fun providesGetGroupsUseCase(
-        groupRepository: GroupRepository
-    ): GetGroupsUseCase {
-        return GetGroupsUseCase(groupRepository)
+    fun provideGroupMessageRepository(
+        firestore: FirebaseFirestore,
+        auth: FirebaseAuth,
+        groupSessionManager: GroupSessionManager
+    ): GroupMessageRepository {
+        return GroupMessageRepository(firestore, auth, groupSessionManager)
     }
     // ------------------------------------------
 
@@ -118,6 +114,15 @@ object AppModule {
         @ApplicationContext context: Context
     ): RoomRepository {
         return RoomRepository(firestore, context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGroupSessionManager(
+        @ApplicationContext appContext: Context,
+        cryptoService: CryptoService
+    ): GroupSessionManager {
+        return GroupSessionManager(appContext, cryptoService)
     }
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Message // Importe o ícone correto
@@ -350,7 +351,7 @@ fun HomeScreen(
             } else {
                 EmptyChatPlaceholder(
                     lottieAnimation = R.raw.online_chat,
-                    message = "Press the message button to search contacts", // Mensagem ajustada
+                    message = "Press + to search users",
                     speed = 0.6f,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -359,14 +360,14 @@ fun HomeScreen(
     }
 }
 
-
 @Composable
 fun GroupListItem(group: Group, navController: NavController) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // TODO: Navegar para a tela de chat do grupo quando ela for criada
+                Log.d("GroupListItem", "Clicando no grupo: ${group.name} (ID: ${group.id})")
+                navController.navigate("group_details/${group.id}")
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically

@@ -172,6 +172,8 @@ class EncryptedSignalProtocolStore(context: Context, private val userId: String)
             .putBoolean("custom_prekey_exists_$keyId", true)
             .apply()
     }
+
+
     
     /**
      * Verifica se existe uma pre-key customizada

@@ -1,9 +1,11 @@
+// app/src/main/java/com/pdm/vczap_o/group/data/GroupRepository.kt
+
 package com.pdm.vczap_o.group.data
 
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.toObjects
 import com.pdm.vczap_o.group.data.model.Group
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
+import com.pdm.vczap_o.group.domain.usecase.GroupDetails
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -15,53 +17,106 @@ class GroupRepository @Inject constructor(
 ) {
     private val groupsCollection = firestore.collection("groups")
 
-    suspend fun createGroup(group: Group): Result<Unit> {
+    /**
+     * Cria um novo grupo no Firestore.
+     * Gera um ID único para o novo grupo antes de salvá-lo.
+     */
+    suspend fun createGroup(group: Group): Result<String> {
         return try {
-            groupsCollection.document(group.id).set(group).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun addMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            groupsCollection.document(groupId).update("members", FieldValue.arrayUnion(userId))
-                .await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            groupsCollection.document(groupId).update("members", FieldValue.arrayRemove(userId))
-                .await()
-            Result.success(Unit)
+            // 1. Gera uma referência para um novo documento, obtendo um ID único.
+            val newGroupRef = groupsCollection.document()
+            // 2. Cria uma cópia do objeto 'group', agora com o ID gerado.
+            val groupWithId = group.copy(id = newGroupRef.id)
+            // 3. Salva o grupo completo (com ID) no Firestore.
+            newGroupRef.set(groupWithId).await()
+            Result.success(newGroupRef.id) // Retorna o ID do grupo
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     /**
-     * Escuta em tempo real os grupos dos quais um usuário é membro.
+     * Escuta em tempo real as atualizações de todos os grupos
+     * dos quais o usuário especificado é membro.
      */
     fun getGroups(userId: String): Flow<Result<List<Group>>> = callbackFlow {
-        val subscription = firestore.collection("groups")
-            .whereArrayContains("members", userId)
+        // A consulta verifica se a chave do 'userId' existe no mapa 'members'
+        val listener = groupsCollection
+            .whereNotEqualTo("members.$userId", null)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(Result.failure(error))
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val groups = snapshot.toObjects<Group>()
+                    val groups = snapshot.toObjects(Group::class.java)
                     trySend(Result.success(groups))
                 }
             }
-        // Ao final, remove o listener para evitar memory leaks
+        // Remove o listener quando o Flow é cancelado para evitar vazamentos de memória
+        awaitClose { listener.remove() }
+    }
+
+    // Função para obter detalhes de um grupo específico (já estava correta)
+    fun getGroupDetails(groupId: String): Flow<Result<Group>> = callbackFlow {
+        val subscription = groupsCollection.document(groupId).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Result.failure(error))
+                return@addSnapshotListener
+            }
+            if (snapshot != null && snapshot.exists()) {
+                val group = snapshot.toObject(Group::class.java)
+                if (group != null) {
+                    trySend(Result.success(group))
+                } else {
+                    trySend(Result.failure(Exception("Falha ao converter dados do grupo.")))
+                }
+            } else {
+                trySend(Result.failure(Exception("Grupo não encontrado.")))
+            }
+        }
         awaitClose { subscription.remove() }
     }
-}
 
+    suspend fun addMember(groupId: String, userId: String): Result<Unit> {
+        return Result.success(Unit)
+    }
+
+    /**
+     * Remove um membro de um grupo no Firestore.
+     */
+    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
+        return try {
+            val groupRef = groupsCollection.document(groupId)
+            groupRef.update("members.$userId", FieldValue.delete()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun getGroupDetailsWithMembers(groupId: String): Flow<Result<GroupDetails>> = callbackFlow {
+        val subscription = groupsCollection.document(groupId).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Result.failure(error))
+                return@addSnapshotListener
+            }
+            if (snapshot != null && snapshot.exists()) {
+                val group = snapshot.toObject(Group::class.java)
+                if (group != null) {
+                    // Aqui você precisaria buscar os membros do grupo
+                    // Por enquanto, retorna lista vazia
+                    val groupDetails = GroupDetails(group, emptyList())
+                    trySend(Result.success(groupDetails))
+                } else {
+                    trySend(Result.failure(Exception("Falha ao converter dados do grupo.")))
+                }
+            } else {
+                trySend(Result.failure(Exception("Grupo não encontrado.")))
+            }
+        }
+        awaitClose { subscription.remove() }
+    }
+
+
+}

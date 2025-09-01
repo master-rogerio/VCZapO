@@ -5,16 +5,19 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 class SearchUsersRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
 ) {
+    /**
+     * Função original do seu colega, para pesquisa em tempo real.
+     */
     fun searchUsers(query: String, currentUserId: String?): Flow<Result<List<User>>> =
         callbackFlow {
             val usersRef = firestore.collection("users")
-            
-            // Se a query estiver vazia, retorna todos os usuários exceto o atual
+
             if (query.isBlank()) {
                 val listenerRegistration = usersRef
                     .whereNotEqualTo("userId", currentUserId)
@@ -24,25 +27,14 @@ class SearchUsersRepository @Inject constructor(
                             return@addSnapshotListener
                         }
                         if (snapshot != null) {
-                            val userData = snapshot.documents.map { doc ->
-                                User(
-                                    userId = doc.id,
-                                    username = doc.getString("username") ?: "",
-                                    profileUrl = doc.getString("profileUrl") ?: "",
-                                    deviceToken = doc.getString("deviceToken") ?: "",
-                                )
-                            }
+                            val userData = snapshot.toObjects(User::class.java)
                             trySend(Result.success(userData))
                         }
                     }
-                awaitClose {
-                    listenerRegistration.remove()
-                }
+                awaitClose { listenerRegistration.remove() }
                 return@callbackFlow
             }
-            
-            // ALTERAÇÃO 28/08/2025 R - Pesquisa case-insensitive e parcial de usuários
-            // Para queries não vazias, usa pesquisa case insensitive
+
             val listenerRegistration = usersRef
                 .whereNotEqualTo("userId", currentUserId)
                 .addSnapshotListener { snapshot, error ->
@@ -51,25 +43,27 @@ class SearchUsersRepository @Inject constructor(
                         return@addSnapshotListener
                     }
                     if (snapshot != null) {
-                        val userData = snapshot.documents
-                            .map { doc ->
-                                User(
-                                    userId = doc.id,
-                                    username = doc.getString("username") ?: "",
-                                    profileUrl = doc.getString("profileUrl") ?: "",
-                                    deviceToken = doc.getString("deviceToken") ?: "",
-                                )
-                            }
+                        val userData = snapshot.toObjects(User::class.java)
                             .filter { user ->
-                                // Filtra usuários cujo username contenha a query (case insensitive)
                                 user.username.contains(query, ignoreCase = true)
                             }
                         trySend(Result.success(userData))
                     }
                 }
-            awaitClose {
-                listenerRegistration.remove()
-            }
-            // FIM ALTERAÇÃO 28/08/2025 R
+            awaitClose { listenerRegistration.remove() }
         }
+
+    /**
+     * Nossa nova função para buscar todos os utilizadores de uma só vez.
+     */
+    suspend fun getAllUsers(): Result<List<User>> {
+        return try {
+            val snapshot = firestore.collection("users").get().await()
+            val users = snapshot.toObjects(User::class.java)
+            Result.success(users)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+

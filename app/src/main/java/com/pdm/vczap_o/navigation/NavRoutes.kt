@@ -98,3 +98,10 @@ object CreateGroupScreen
 
 @Serializable
 object ContactsScreenDC
+/**
+ * Represents the screen for viewing group information and members.
+ * @param groupId The unique identifier of the group.
+ */
+@Serializable
+data class GroupInfoScreen(val groupId: String)
+

@@ -1,6 +1,7 @@
 package com.pdm.vczap_o.navigation
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
@@ -10,9 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import androidx.navigation.toRoute
 // Removido: LoadingScreen não é mais necessário
 import com.pdm.vczap_o.auth.presentation.screens.AuthScreen
@@ -26,14 +29,15 @@ import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.core.model.User
-// ADIÇÃO INICIA AQUI
 import com.pdm.vczap_o.group.presentation.screens.CreateGroupScreen
-// ADIÇÃO TERMINA AQUI
+import com.pdm.vczap_o.group.presentation.screens.GroupInfoScreen
 import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
 import com.google.gson.Gson
 import com.pdm.vczap_o.contacts.presentation.screens.ContactsScreen
+import com.pdm.vczap_o.group.presentation.screens.GroupChatScreen
+import com.pdm.vczap_o.group.presentation.screens.GroupDetailsScreen
 
 @Composable
 fun ChatAppNavigation() {
@@ -85,12 +89,6 @@ fun ChatAppNavigation() {
             enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
             SearchUsersScreen(navController)
         }
-
-//        composable(
-//            "notifications",
-//            enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
-//            NotificationTestScreen(context = context)
-//        }
 
         composable<SetUserDetailsDC>(
             enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
@@ -157,6 +155,46 @@ fun ChatAppNavigation() {
         // ADICIONADO: A NOVA ROTA PARA A TELA DE CONTATOS
         composable<ContactsScreenDC> {
             ContactsScreen()
+        }
+    }
+}
+
+        composable<GroupInfoScreen>(
+            enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
+        ) {
+            val args = it.toRoute<GroupInfoScreen>()
+            // 👇 CORREÇÃO AQUI 👇
+            GroupInfoScreen(
+                groupId = args.groupId
+            )
+        }
+
+        composable(
+            route = "group_details/{groupId}",
+            arguments = listOf(
+                navArgument("groupId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            Log.d("Navigation", "Navegando para detalhes do grupo: $groupId")
+            GroupDetailsScreen(
+                navController = navController,
+                groupId = groupId
+            )
+        }
+
+        // Adicione esta rota junto com as outras rotas existentes
+        composable(
+            route = "group_chat/{groupId}",
+            arguments = listOf(
+                navArgument("groupId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+            GroupChatScreen(
+                navController = navController,
+                groupId = groupId
+            )
         }
     }
 }
