@@ -30,6 +30,20 @@ fun GroupDetailsScreen(
     val uiState by groupViewModel.uiState.collectAsState()
     val currentUserId = groupViewModel.getCurrentUserId()
 
+    // ====================================================================
+    // ===== AQUI ESTÁ A CORREÇÃO =========================================
+    // ====================================================================
+    // Criamos um "estado derivado" que é recalculado sempre que o uiState muda.
+    val isCurrentUserAdmin = remember(uiState.currentGroup) {
+        // Usamos a mesma lógica da função do ViewModel, mas de forma reativa.
+        val group = uiState.currentGroup ?: return@remember false
+        val adminIds = group.members
+            .filter { (_, data) -> (data["isAdmin"] as? Boolean) == true }
+            .keys
+        currentUserId in adminIds
+    }
+    // ====================================================================
+
     LaunchedEffect(groupId) {
         groupViewModel.loadGroupDetails(groupId)
     }
@@ -49,9 +63,15 @@ fun GroupDetailsScreen(
                     }
                 },
                 actions = {
-                    if (groupViewModel.isCurrentUserAdmin()) {
-                        IconButton(onClick = { navController.navigate("add_members/$groupId") }) {
-                            Icon(Icons.Default.PersonAdd, contentDescription = "Adicionar Membros")
+                    // Agora usamos a nossa variável reativa 'isCurrentUserAdmin'
+                    if (isCurrentUserAdmin) {
+                        IconButton(onClick = {
+                            navController.navigate("add_members/$groupId")
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = "Adicionar Membros"
+                            )
                         }
                     }
                 }
@@ -66,6 +86,7 @@ fun GroupDetailsScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 uiState.currentGroup != null -> {
+                    // A função getAdminIds ainda é usada aqui para a lista
                     val adminIds = groupViewModel.getAdminIds()
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
