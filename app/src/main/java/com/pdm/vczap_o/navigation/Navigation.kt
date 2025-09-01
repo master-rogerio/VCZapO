@@ -150,15 +150,10 @@ fun ChatAppNavigation() {
         ) {
             CreateGroupScreen(navController = navController)
         }
-        // ADIÇÃO TERMINA AQUI
 
-        // ADICIONADO: A NOVA ROTA PARA A TELA DE CONTATOS
         composable<ContactsScreenDC> {
             ContactsScreen()
         }
-    }
-}
-
         composable<GroupInfoScreen>(
             enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
         ) {
