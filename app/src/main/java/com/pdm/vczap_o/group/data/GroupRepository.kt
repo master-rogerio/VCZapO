@@ -1,15 +1,14 @@
-// app/src/main/java/com/pdm/vczap_o/group/data/GroupRepository.kt
-
 package com.pdm.vczap_o.group.data
 
-import android.util.Log
-import com.pdm.vczap_o.group.data.model.Group
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.group.domain.usecase.GroupDetails
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
@@ -17,28 +16,10 @@ class GroupRepository @Inject constructor(
     private val firestore: FirebaseFirestore
 ) {
     private val groupsCollection = firestore.collection("groups")
+    private val usersCollection = firestore.collection("users")
 
-    /**
-     * Cria um novo grupo no Firestore.
-     * Gera um ID único para o novo grupo antes de salvá-lo.
-     */
-    suspend fun createGroup(groupData: Map<String, Any>): Result<String> {
-        return try {
-            // We now use the map directly, which doesn't contain the 'id' field.
-            val documentReference = firestore.collection("groups").add(groupData).await()
-
-            Result.success(documentReference.id)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Escuta em tempo real as atualizações de todos os grupos
-     * dos quais o usuário especificado é membro.
-     */
+    // >>>>> FUNÇÃO ADICIONADA DE VOLTA <<<<<
     fun getGroups(userId: String): Flow<Result<List<Group>>> = callbackFlow {
-        // A consulta verifica se a chave do 'userId' existe no mapa 'members'
         val listener = groupsCollection
             .whereNotEqualTo("members.$userId", null)
             .addSnapshotListener { snapshot, error ->
@@ -51,11 +32,28 @@ class GroupRepository @Inject constructor(
                     trySend(Result.success(groups))
                 }
             }
-        // Remove o listener quando o Flow é cancelado para evitar vazamentos de memória
         awaitClose { listener.remove() }
     }
 
-    // Função para obter detalhes de um grupo específico (já estava correta)
+    suspend fun createGroup(groupData: Map<String, Any>): Result<String> {
+        return try {
+            val documentReference = groupsCollection.add(groupData).await()
+            Result.success(documentReference.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun addMember(groupId: String, userId: String): Result<Unit> {
+        return try {
+            val groupRef = groupsCollection.document(groupId)
+            groupRef.update("members.$userId", mapOf("isAdmin" to false)).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun getGroupDetails(groupId: String): Flow<Result<Group>> = callbackFlow {
         val subscription = groupsCollection.document(groupId).addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -63,7 +61,7 @@ class GroupRepository @Inject constructor(
                 return@addSnapshotListener
             }
             if (snapshot != null && snapshot.exists()) {
-                val group = snapshot.toObject(Group::class.java)
+                val group = snapshot.toObject(Group::class.java)?.copy(id = snapshot.id)
                 if (group != null) {
                     trySend(Result.success(group))
                 } else {
@@ -76,36 +74,30 @@ class GroupRepository @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
-    suspend fun addMember(groupId: String, userId: String): Result<Unit> {
-        return Result.success(Unit)
-    }
-
-    /**
-     * Remove um membro de um grupo no Firestore.
-     */
-    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
-        return try {
-            val groupRef = groupsCollection.document(groupId)
-            groupRef.update("members.$userId", FieldValue.delete()).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun updateMemberData(groupId: String, memberId: String, data: Map<String, Any>) {
+        groupsCollection.document(groupId)
+            .update("members.$memberId", data)
+            .await()
     }
 
     fun getGroupDetailsWithMembers(groupId: String): Flow<Result<GroupDetails>> = callbackFlow {
         val subscription = groupsCollection.document(groupId).addSnapshotListener { snapshot, error ->
-            if (error != null) {
-                trySend(Result.failure(error))
-                return@addSnapshotListener
-            }
+            if (error != null) { trySend(Result.failure(error)); return@addSnapshotListener }
             if (snapshot != null && snapshot.exists()) {
-                val group = snapshot.toObject(Group::class.java)
+                val group = snapshot.toObject(Group::class.java)?.copy(id = snapshot.id)
                 if (group != null) {
-                    // Aqui você precisaria buscar os membros do grupo
-                    // Por enquanto, retorna lista vazia
-                    val groupDetails = GroupDetails(group, emptyList())
-                    trySend(Result.success(groupDetails))
+                    launch {
+                        try {
+                            val members = group.members.keys.mapNotNull { memberId ->
+                                val userDocument = usersCollection.document(memberId).get().await()
+                                userDocument.toObject(User::class.java)?.copy(userId = userDocument.id)
+                            }
+                            val groupDetails = GroupDetails(group, members)
+                            trySend(Result.success(groupDetails))
+                        } catch (e: Exception) {
+                            trySend(Result.failure(e))
+                        }
+                    }
                 } else {
                     trySend(Result.failure(Exception("Falha ao converter dados do grupo.")))
                 }
@@ -116,11 +108,13 @@ class GroupRepository @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
-    suspend fun updateMemberData(groupId: String, memberId: String, data: Map<String, Any>) {
-        firestore.collection("groups").document(groupId)
-            .update("members.$memberId", data)
-            .await()
+    suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
+        return try {
+            val groupRef = groupsCollection.document(groupId)
+            groupRef.update("members.$userId", FieldValue.delete()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
-
-
 }

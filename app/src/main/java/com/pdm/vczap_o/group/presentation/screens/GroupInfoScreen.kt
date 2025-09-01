@@ -21,43 +21,42 @@ import com.pdm.vczap_o.group.presentation.viewmodels.GroupDetailsViewModel
 
 @Composable
 fun GroupInfoScreen(
-    groupId: String, // Você deve passar o ID do grupo para esta tela
+    groupId: String,
     viewModel: GroupDetailsViewModel = hiltViewModel()
 ) {
-    // Este efeito será executado uma vez para carregar os dados do grupo
     LaunchedEffect(key1 = groupId) {
         viewModel.loadGroupDetails(groupId)
     }
 
-    // Observa o estado da UI do ViewModel
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // Mostra um indicador de progresso enquanto carrega
     if (uiState.isLoading) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
         }
-        // Mostra uma mensagem de erro se algo falhar
     } else if (uiState.errorMessage != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Erro: ${uiState.errorMessage}")
         }
-        // Mostra as informações do grupo quando os dados estiverem prontos
     } else if (uiState.currentGroup != null) {
-        Column {
-            // Usa o nome do grupo do estado
-            Text(text = uiState.currentGroup!!.name)
-            // LINHA DE DIAGNÓSTICO TEMPORÁRIA
-            Text(text = "É administrador? ${viewModel.isCurrentUserAdmin()}")
-            // ... aqui você pode adicionar mais informações do grupo ...
+        // 1. Pegamos os dados necessários do ViewModel
+        val currentUserId = viewModel.getCurrentUserId()
+        val adminIds = viewModel.getAdminIds()
 
-            // Usa a lista de membros do estado
+        Column {
+            Text(text = uiState.currentGroup!!.name)
+            // ... mais informações do grupo ...
+
             LazyColumn {
                 items(uiState.groupMembers) { member ->
+                    // 2. Chamamos o MemberListItem com os parâmetros corretos
                     MemberListItem(
                         member = member,
-                        showRemoveButton = viewModel.canRemoveMember(member.userId),
-                        onRemoveClick = { viewModel.removeMember(member.userId) }
+                        currentUserId = currentUserId,
+                        adminIds = adminIds,
+                        onRemoveMember = { memberId ->
+                            viewModel.removeMember(memberId)
+                        }
                     )
                 }
             }

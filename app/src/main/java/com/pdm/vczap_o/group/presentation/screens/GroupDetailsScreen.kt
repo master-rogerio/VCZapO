@@ -1,14 +1,13 @@
 package com.pdm.vczap_o.group.presentation.screens
 
-import android.util.Log
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.group.data.model.Group as GroupModel
+import com.pdm.vczap_o.group.presentation.components.MemberListItem
 import com.pdm.vczap_o.group.presentation.viewmodels.GroupDetailsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,17 +27,11 @@ fun GroupDetailsScreen(
     groupId: String,
     groupViewModel: GroupDetailsViewModel = hiltViewModel()
 ) {
-    Log.d("GroupDetailsScreen", "GroupDetailsScreen sendo renderizada para grupo: $groupId")
     val uiState by groupViewModel.uiState.collectAsState()
+    val currentUserId = groupViewModel.getCurrentUserId()
 
     LaunchedEffect(groupId) {
         groupViewModel.loadGroupDetails(groupId)
-    }
-
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            groupViewModel.clearError()
-        }
     }
 
     Scaffold(
@@ -56,11 +50,7 @@ fun GroupDetailsScreen(
                 },
                 actions = {
                     if (groupViewModel.isCurrentUserAdmin()) {
-                        IconButton(
-                            onClick = {
-                                navController.navigate("add_members/$groupId")
-                            }
-                        ) {
+                        IconButton(onClick = { navController.navigate("add_members/$groupId") }) {
                             Icon(Icons.Default.PersonAdd, contentDescription = "Adicionar Membros")
                         }
                     }
@@ -74,37 +64,15 @@ fun GroupDetailsScreen(
                 .padding(paddingValues)
         ) {
             when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-
-                uiState.currentGroup == null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Grupo não encontrado")
-                    }
-                }
-
-                else -> {
+                uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                uiState.currentGroup != null -> {
+                    val adminIds = groupViewModel.getAdminIds()
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         item {
-                            GroupHeader(
-                                group = uiState.currentGroup!!,
-                                navController = navController  // Passar navController como parâmetro
-                            )
-                        }
-
-                        item {
+                            GroupHeader(group = uiState.currentGroup!!)
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
                                 text = "Membros (${uiState.groupMembers.size})",
@@ -114,202 +82,47 @@ fun GroupDetailsScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                         }
 
-                        // Admins
-                        val admins = groupViewModel.getAdmins()
-                        if (admins.isNotEmpty()) {
-                            item {
-                                Text(
-                                    text = "Administradores",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                            }
-
-                            items(admins) { user ->
-                                MemberItem(
-                                    user = user,
-                                    isAdmin = true,
-                                    canRemove = groupViewModel.canRemoveMember(user.userId),
-                                    onRemoveClick = {
-                                        groupViewModel.removeMember(user.userId)
-                                    }
-                                )
-                            }
-                        }
-
-                        // Membros regulares
-                        val regularMembers = groupViewModel.getRegularMembers()
-                        if (regularMembers.isNotEmpty()) {
-                            item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Membros",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                )
-                            }
-
-                            items(regularMembers) { user ->
-                                MemberItem(
-                                    user = user,
-                                    isAdmin = false,
-                                    canRemove = groupViewModel.canRemoveMember(user.userId),
-                                    onRemoveClick = {
-                                        groupViewModel.removeMember(user.userId)
-                                    }
-                                )
-                            }
+                        items(uiState.groupMembers) { member ->
+                            MemberListItem(
+                                member = member,
+                                currentUserId = currentUserId,
+                                adminIds = adminIds,
+                                onRemoveMember = { memberId ->
+                                    groupViewModel.removeMember(memberId)
+                                }
+                            )
                         }
                     }
                 }
+                else -> Text("Grupo não encontrado", modifier = Modifier.align(Alignment.Center))
             }
         }
     }
 }
 
 @Composable
-fun GroupHeader(
-    group: com.pdm.vczap_o.group.data.model.Group,
-    navController: NavController
-) {
-    Card(
+fun GroupHeader(group: GroupModel) {
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Avatar do grupo
-                Surface(
-                    modifier = Modifier.size(64.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Group,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
-                    Text(
-                        text = group.name,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "${group.members.size} membros",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botão para entrar no chat (se implementado)
-            Button(
-                onClick = {
-                    Log.d("GroupDetails", "Tentando navegar para chat do grupo: ${group.id}")
-                    // Navegar para o chat do grupo
-                    navController.navigate("group_chat/${group.id}")
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Chat,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Entrar no Chat")
-            }
-        }
-    }
-}
-
-@Composable
-fun MemberItem(
-    user: User,
-    isAdmin: Boolean,
-    canRemove: Boolean,
-    onRemoveClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar do usuário
         Surface(
-            modifier = Modifier.size(40.dp),
+            modifier = Modifier.size(80.dp),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.secondaryContainer
+            color = MaterialTheme.colorScheme.primaryContainer
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                    imageVector = Icons.Default.Group,
+                    contentDescription = "Ícone do Grupo",
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Informações do usuário
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = user.username,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-
-            if (isAdmin) {
-                Text(
-                    text = "Administrador",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-
-        // Botão de remover (apenas para admins)
-        if (canRemove) {
-            IconButton(
-                onClick = onRemoveClick
-            ) {
-                Icon(
-                    imageVector = Icons.Default.RemoveCircle,
-                    contentDescription = "Remover membro",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = group.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(text = "${group.members.size} membros", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
