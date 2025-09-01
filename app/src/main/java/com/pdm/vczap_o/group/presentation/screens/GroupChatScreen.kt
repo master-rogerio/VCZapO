@@ -17,28 +17,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.pdm.vczap_o.group.presentation.components.GroupMessagesList
+import com.pdm.vczap_o.group.presentation.state.ChatState
 import com.pdm.vczap_o.group.presentation.viewmodels.GroupChatViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GroupChatScreen(
     navController: NavController,
-    groupId: String,
     groupChatViewModel: GroupChatViewModel = hiltViewModel()
 ) {
     val uiState by groupChatViewModel.uiState.collectAsState()
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(groupId) {
-        groupChatViewModel.initialize(groupId)
-    }
 
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            groupChatViewModel.clearError()
-        }
-    }
+    val isChatReady = uiState.chatState is ChatState.Ready
 
     Scaffold(
         topBar = {
@@ -64,6 +57,7 @@ fun GroupChatScreen(
                     onValueChange = { messageText = it },
                     modifier = Modifier.weight(1f),
                     placeholder = { Text("Digite uma mensagem...") },
+                    enabled = isChatReady,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
@@ -83,7 +77,8 @@ fun GroupChatScreen(
                             groupChatViewModel.sendMessage(messageText)
                             messageText = ""
                         }
-                    }
+                    },
+                    enabled = isChatReady && messageText.isNotBlank()
                 ) {
                     Icon(Icons.Default.Send, contentDescription = "Enviar")
                 }
@@ -95,47 +90,40 @@ fun GroupChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                uiState.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+            when (val state = uiState.chatState) {
+                is ChatState.Loading -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Iniciando chat seguro...")
                     }
                 }
-
-                uiState.errorMessage != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("Erro: ${uiState.errorMessage}")
-                    }
+                is ChatState.Error -> {
+                    Text(
+                        text = "Erro: ${state.message}",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
-
-                else -> {
-                    // Lista de mensagens
+                is ChatState.Ready -> {
                     if (uiState.messages.isNotEmpty()) {
                         GroupMessagesList(
                             messages = uiState.messages,
                             currentUserId = groupChatViewModel.getCurrentUserId(),
                             modifier = Modifier.fillMaxSize(),
                             scrollState = listState,
-                            groupId = groupId,
+                            // Estes dois últimos parâmetros podem não ser necessários,
+                            // dependendo da sua implementação de GroupMessagesList.
+                            // Remova se não precisar deles.
+                            groupId = "",
                             groupChatViewModel = groupChatViewModel
                         )
                     } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Nenhuma mensagem ainda. Seja o primeiro a enviar uma mensagem!",
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
+                        Text(
+                            text = "Nenhuma mensagem ainda. Seja o primeiro a enviar uma mensagem!",
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(16.dp)
+                        )
                     }
                 }
             }

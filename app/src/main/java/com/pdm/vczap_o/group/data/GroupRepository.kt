@@ -118,5 +118,11 @@ class GroupRepository @Inject constructor(
         awaitClose { subscription.remove() }
     }
 
+    suspend fun updateMemberData(groupId: String, memberId: String, data: Map<String, Any>) {
+        firestore.collection("groups").document(groupId)
+            .update("members.$memberId", data)
+            .await()
+    }
+
 
 }

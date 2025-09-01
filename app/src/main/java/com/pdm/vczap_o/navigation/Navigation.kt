@@ -182,11 +182,13 @@ fun ChatAppNavigation() {
             arguments = listOf(
                 navArgument("groupId") { type = NavType.StringType }
             )
-        ) { backStackEntry ->
-            val groupId = backStackEntry.arguments?.getString("groupId") ?: ""
+        ) { // MUDANÇA: Não precisamos mais do backStackEntry aqui
+
+            // A tela agora é chamada de forma mais simples.
+            // O Hilt e o SavedStateHandle cuidam de entregar o groupId
+            // para o GroupChatViewModel automaticamente.
             GroupChatScreen(
-                navController = navController,
-                groupId = groupId
+                navController = navController
             )
         }
     }

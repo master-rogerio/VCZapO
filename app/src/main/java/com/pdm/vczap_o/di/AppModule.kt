@@ -109,9 +109,10 @@ object AppModule {
     @Singleton
     fun provideGroupSessionManager(
         @ApplicationContext appContext: Context,
-        cryptoService: CryptoService
+        cryptoService: CryptoService,
+        auth: FirebaseAuth
     ): GroupSessionManager {
-        return GroupSessionManager(appContext, cryptoService)
+        return GroupSessionManager(appContext, cryptoService, auth)
     }
 }
 

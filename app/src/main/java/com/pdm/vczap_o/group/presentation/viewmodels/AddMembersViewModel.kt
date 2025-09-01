@@ -1,9 +1,14 @@
 package com.pdm.vczap_o.group.presentation.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pdm.vczap_o.auth.domain.GetUserIdUseCase
 import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.cripto.CryptoService
+import com.pdm.vczap_o.cripto.EnhancedCryptoUtils
+import com.pdm.vczap_o.cripto.GroupSessionManager
+import com.pdm.vczap_o.group.data.GroupRepository
 import com.pdm.vczap_o.group.domain.usecase.AddMemberUseCase
 import com.pdm.vczap_o.home.domain.usecase.GetAllUsersUseCase
 import com.pdm.vczap_o.group.domain.usecase.GetGroupDetailsUseCase
@@ -20,7 +25,10 @@ class AddMembersViewModel @Inject constructor(
     private val addMemberUseCase: AddMemberUseCase,
     private val getAllUsersUseCase: GetAllUsersUseCase,
     private val getGroupDetailsUseCase: GetGroupDetailsUseCase,
-    private val getUserIdUseCase: GetUserIdUseCase
+    private val getUserIdUseCase: GetUserIdUseCase,
+    private val groupSessionManager: GroupSessionManager,
+    private val cryptoService: CryptoService,
+    private val groupRepository: GroupRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddMembersUiState())
@@ -111,7 +119,7 @@ class AddMembersViewModel @Inject constructor(
     fun addSelectedMembers() {
         val currentState = _uiState.value
         val groupId = currentState.groupId ?: return
-        
+
         if (currentState.selectedUsers.isEmpty()) {
             _uiState.update { it.copy(errorMessage = "Selecione pelo menos um usuário") }
             return
@@ -119,29 +127,41 @@ class AddMembersViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
             try {
-                val memberIds = currentState.selectedUsers.map { it.userId }
-                
-                memberIds.forEach { userId ->
+                val adminId = getUserIdUseCase() ?: throw Exception("Usuário não autenticado")
+                val newMemberIds = currentState.selectedUsers.map { it.userId }
+
+                newMemberIds.forEach { userId ->
                     addMemberUseCase(groupId, userId)
                 }
-                
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        membersAdded = true,
-                        addedMembersCount = memberIds.size,
-                        errorMessage = null
+
+                val groupKey = groupSessionManager.getGroupKey(groupId)
+                    ?: throw IllegalStateException("Admin não possui a chave do grupo localmente.")
+
+                newMemberIds.forEach { memberId ->
+                    val encryptedMessage = cryptoService.encryptMessage(
+                        currentUserId = adminId,
+                        remoteUserId = memberId,
+                        message = EnhancedCryptoUtils.encode(groupKey)
                     )
+
+                    if (encryptedMessage != null) {
+
+                        val encryptedKeyBase64 = EnhancedCryptoUtils.encode(encryptedMessage.content)
+                        val messageType = encryptedMessage.type
+
+                        val memberKeyData = mapOf(
+                            "encryptedKey" to encryptedKeyBase64,
+                            "keySenderId" to adminId,
+                            "keyEncryptionType" to messageType
+                        )
+
+                        groupRepository.updateMemberData(groupId, memberId, memberKeyData)
+                    }
                 }
+                _uiState.update { it.copy(isLoading = false, membersAdded = true, addedMembersCount = newMemberIds.size) }
             } catch (e: Exception) {
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = e.message ?: "Erro ao adicionar membros"
-                    )
-                }
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Erro ao adicionar membros: ${e.message}") }
             }
         }
     }

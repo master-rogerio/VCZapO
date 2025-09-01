@@ -1,6 +1,6 @@
 [versions]
 accompanistSystemuicontroller = "0.36.0"
-agp = "8.12.0"
+agp = "8.11.0"
 benchmarkMacroJunit4 = "1.4.0"
 cameraCore = "1.4.2"
 coilCompose = "2.7.0"
