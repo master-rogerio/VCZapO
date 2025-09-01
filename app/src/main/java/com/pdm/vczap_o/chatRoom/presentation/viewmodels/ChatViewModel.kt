@@ -265,13 +265,24 @@ class ChatViewModel @Inject constructor(
                 
                 roomId?.let { roomId ->
                     currentUserId?.let { userId ->
+                        // CORRIGIDO: Verificar se otherUserId é válido antes de enviar
+                        val validOtherUserId = otherUserId
+                        if (validOtherUserId.isNullOrBlank()) {
+                            Log.e(tag, "❌ Erro: otherUserId é null ou vazio ao enviar mensagem")
+                            Log.e(tag, "roomId: $roomId, userId: $userId, otherUserId: $otherUserId")
+                            _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
+                            return@launch
+                        }
+                        
+                        Log.d(tag, "✅ Enviando mensagem com otherUserId válido: '$validOtherUserId'")
+                        
                         sendTextMessageUseCase(
                             roomId = roomId,
                             content = content,
                             senderId = userId,
                             senderName = senderName,
                             recipientsToken = recipientsToken,
-                            otherUserId = otherUserId ?: "",
+                            otherUserId = validOtherUserId,
                             profileUrl = profileUrl
                         )
                     }

@@ -222,7 +222,7 @@ fun MessageInput(
                             .fillMaxWidth()
                             .padding(vertical = 12.dp, horizontal = 15.dp)
                     ) {
-                        Row(modifier = Modifier.weight(2f).height(25.dp)) {
+                        Row(modifier = Modifier.weight(2f)) {
                             Box {
                                 innerTextField()
                                 if (messageText.isBlank()) Text("Digite uma mensagem...")

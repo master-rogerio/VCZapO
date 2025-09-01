@@ -113,6 +113,10 @@ dependencies {
     implementation(libs.firebase.messaging.ktx) {
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
     }
+    // ADICIONADO: Firebase Functions para notificações sem servidor
+    implementation("com.google.firebase:firebase-functions-ktx") {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
 
     // Navigation lib
     implementation(libs.androidx.navigation.compose)

@@ -18,16 +18,21 @@ object NotificationTokenManager {
         Log.d("TOKEN_DEBUG", "=== VERIFICANDO TOKEN ===")
         Log.d("TOKEN_DEBUG", "Token em cache: $cachedToken")
         Log.d("TOKEN_DEBUG", "Novo token: $newToken")
+        Log.d("TOKEN_DEBUG", "Token válido: ${newToken.isNotEmpty() && newToken.length > 50}")
         Log.d("TOKEN_DEBUG", "Tokens iguais: ${cachedToken == newToken}")
         
-        if (cachedToken == newToken && !newToken.isEmpty()) {
-            Log.d("TOKEN_DEBUG", "✅ Token não mudou, mas vamos atualizar mesmo assim para debug")
-            // TEMPORÁRIO: Para debug, sempre atualizar
-            updateUserToken(context, userId, newToken)
-        } else {
-            Log.d("TOKEN_DEBUG", "🔄 Token mudou ou é novo - atualizando")
-            updateUserToken(context, userId, newToken)
+        if (newToken.isEmpty()) {
+            Log.e("TOKEN_DEBUG", "❌ Token FCM está vazio! Não é possível salvar.")
+            return
         }
+        
+        if (newToken.length < 50) {
+            Log.e("TOKEN_DEBUG", "❌ Token FCM parece inválido (muito curto): $newToken")
+            return
+        }
+        
+        Log.d("TOKEN_DEBUG", "🔄 Atualizando token (sempre para garantir sincronização)")
+        updateUserToken(context, userId, newToken)
     }
 
     /**

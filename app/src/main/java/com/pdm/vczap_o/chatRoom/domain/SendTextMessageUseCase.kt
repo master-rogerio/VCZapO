@@ -26,14 +26,26 @@ class SendTextMessageUseCase @Inject constructor(
             otherUserId = otherUserId
         )
 
-        notificationUseCase(
-            recipientsToken = recipientsToken,
-            title = senderName,
-            body = content,
-            roomId = roomId,
-            recipientsUserId = otherUserId,
-            sendersUserId = senderId,
-            profileUrl = profileUrl
-        )
+        // ALTERADO: Usar Firebase direto ao invés de servidor externo
+        try {
+            com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.sendNotificationViaFunction(
+                recipientUserId = otherUserId,
+                title = senderName,
+                body = content,
+                roomId = roomId,
+                senderUserId = senderId,
+                profileUrl = profileUrl
+            )
+        } catch (e: Exception) {
+            // Fallback: salvar no Firestore para processar depois
+            com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.saveNotificationToFirestore(
+                recipientUserId = otherUserId,
+                title = senderName,
+                body = content,
+                roomId = roomId,
+                senderUserId = senderId,
+                profileUrl = profileUrl
+            )
+        }
     }
 }
