@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -33,7 +34,9 @@ class GroupChatViewModel @Inject constructor(
     fun initialize(groupId: String) {
         _uiState.update { it.copy(groupId = groupId) }
         loadGroupDetails(groupId)
-        loadGroupMessages(groupId)
+        // A linha abaixo foi removida para evitar race condition.
+        // O listener já carrega as mensagens e as atualiza em tempo real.
+        // loadGroupMessages(groupId)
         setupMessageListener(groupId)
     }
 
@@ -71,27 +74,14 @@ class GroupChatViewModel @Inject constructor(
         }
     }
 
-    private fun loadGroupMessages(groupId: String) {
-        viewModelScope.launch {
-            try {
-                val messages = getGroupMessagesUseCase(groupId)
-                _uiState.update { it.copy(messages = messages) }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(errorMessage = "Erro ao carregar mensagens: ${e.message}")
-                }
-            }
-        }
-    }
-
     private fun setupMessageListener(groupId: String) {
         messageListener = addGroupMessageListenerUseCase(
             groupId = groupId,
             onMessagesUpdated = { messages ->
-                _uiState.update { it.copy(messages = messages) }
+                _uiState.update { it.copy(messages = messages, isLoading = false) }
             },
             onError = { error ->
-                _uiState.update { it.copy(errorMessage = error) }
+                _uiState.update { it.copy(errorMessage = error, isLoading = false) }
             }
         )
     }
@@ -110,6 +100,24 @@ class GroupChatViewModel @Inject constructor(
             _uiState.update { it.copy(errorMessage = "ID do grupo não disponível") }
             return
         }
+
+        // --- Adição da atualização otimista ---
+        val tempMessage = ChatMessage(
+            id = Date().time.toString(), // ID temporário
+            content = content,
+            createdAt = Date(),
+            senderId = currentUserId,
+            senderName = auth.currentUser?.displayName ?: "Você",
+            type = "text",
+            read = false,
+            delivered = false,
+            encryptionType = null
+        )
+        // Adiciona a mensagem à lista imediatamente na UI
+        _uiState.update { currentState ->
+            currentState.copy(messages = currentState.messages + tempMessage)
+        }
+        // ------------------------------------
 
         viewModelScope.launch {
             try {
@@ -137,12 +145,10 @@ class GroupChatViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    // Métodos para compatibilidade com ChatViewModel
     fun getCurrentUserId(): String = auth.currentUser?.uid ?: ""
 
     override fun onCleared() {
         super.onCleared()
-        // Limpar listener quando o ViewModel for destruído
         messageListener?.let { listener ->
             // Implementar limpeza do listener se necessário
         }

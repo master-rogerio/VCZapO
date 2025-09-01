@@ -145,6 +145,7 @@ class GroupMessageRepository @Inject constructor(
                     }
                 } catch (e: Exception) {
                     Log.e(tag, "Erro ao decriptografar mensagem própria do grupo: ${e.message}")
+                    content = "Erro de Decriptografia: ${e.message}"
                 }
             }
         } else {
@@ -158,10 +159,11 @@ class GroupMessageRepository @Inject constructor(
                         Log.d(tag, "Mensagem do grupo decriptografada com sucesso de $senderId")
                     } else {
                         Log.w(tag, "Falha ao decriptografar mensagem do grupo de $senderId - resultado nulo")
+                        content = "Erro: Mensagem não pôde ser descriptografada"
                     }
                 } catch (e: Exception) {
                     Log.e(tag, "Erro ao decriptografar mensagem do grupo de $senderId: ${e.message}")
-                    content = "Mensagem criptografada"
+                    content = "Erro: Mensagem não pôde ser descriptografada"
                 }
             }
         }
@@ -209,6 +211,7 @@ class GroupMessageRepository @Inject constructor(
                     }
                 } catch (e: Exception) {
                     Log.e(tag, "Erro ao decriptografar mensagem própria do grupo: ${e.message}")
+                    content = "Erro de Decriptografia: ${e.message}"
                 }
             }
         } else {
@@ -219,11 +222,11 @@ class GroupMessageRepository @Inject constructor(
                     if (decryptedContent != null) {
                         content = decryptedContent
                     } else {
-                        content = "Mensagem não pôde ser descriptografada"
+                        content = "Erro: Mensagem não pôde ser descriptografada"
                     }
                 } catch (e: Exception) {
                     Log.e(tag, "Erro ao descriptografar mensagem do grupo: ${e.message}")
-                    content = "Mensagem não pôde ser descriptografada"
+                    content = "Erro: Mensagem não pôde ser descriptografada"
                 }
             }
         }

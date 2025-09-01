@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,14 +27,26 @@ fun GroupMessagesList(
     groupId: String,
     groupChatViewModel: GroupChatViewModel
 ) {
+    // Ordenar as mensagens para que as mais recentes apareçam no topo
+    // O reverseLayout irá então invertê-las para exibir do topo para baixo
+    val sortedMessages = remember(messages) {
+        messages.sortedBy { it.createdAt }
+    }
+
+    // Adiciona uma chave única a cada item para melhor performance e estabilidade
+    // quando a lista é atualizada.
+    // Garante que o LazyColumn saiba qual item foi adicionado ou removido.
     LazyColumn(
         modifier = modifier,
         state = scrollState,
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        reverseLayout = true,
+        reverseLayout = true, // Faz com que a lista cresça de baixo para cima
         contentPadding = PaddingValues(top = 10.dp, bottom = 10.dp)
     ) {
-        items(messages) { message ->
+        items(
+            items = sortedMessages,
+            key = { message -> message.id }
+        ) { message ->
             GroupMessageItem(
                 message = message,
                 isFromMe = message.senderId == currentUserId,
