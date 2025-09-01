@@ -8,4 +8,16 @@
     <external-cache-path
         name="external_cache"
         path="." />
+    <!-- ADICIONADO: Acesso a arquivos externos para compartilhamento -->
+    <external-files-path
+        name="external_files"
+        path="." />
+    <external-path
+        name="external"
+        path="." />
+    <!-- Acesso a Downloads para arquivos baixados -->
+    <external-path
+        name="downloads"
+        path="Download" />
+    <!-- FIM ADICIONADO -->
 </paths>

@@ -2,6 +2,8 @@ package com.pdm.vczap_o.auth.data
 
 import com.pdm.vczap_o.core.model.NewUser
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -53,6 +55,17 @@ class AuthRepository @Inject constructor(
         }
     }
 
+    suspend fun signInWithGoogle(idToken: String): Result<String> {
+        return try {
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = auth.signInWithCredential(credential).await()
+            Result.success(result.user?.uid ?: "")
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
     suspend fun resetPassword(email: String): Result<String> {
         return try {
             auth.sendPasswordResetEmail(email).await()
@@ -77,4 +90,60 @@ class AuthRepository @Inject constructor(
     fun logout() {
         auth.signOut()
     }
+
+//cripto
+
+    /**
+     * Verifica se as chaves já existem no servidor
+     * Evita gerar chaves desnecessariamente
+     */
+    suspend fun checkIfKeysExist(userId: String): Boolean {
+        return try {
+            val document = firebase.collection("userKeys").document(userId).get().await()
+            document.exists() && document.get("identityKey") != null
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+
+    suspend fun publishUserKeys(
+        userId: String,
+        identityKey: String,
+        registrationId: Int,
+        preKeys: List<Map<String, Any>>,
+        signedPreKey: Map<String, Any>
+    ): Result<Unit> {
+        return try {
+            val keysData = hashMapOf(
+                "identityKey" to identityKey,
+                "registrationId" to registrationId,
+                "preKeys" to preKeys,
+                "signedPreKey" to signedPreKey,
+                "timestamp" to FieldValue.serverTimestamp()
+            )
+            firebase.collection("userKeys").document(userId)
+                .set(keysData)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
+
+
+/*
+    suspend fun publishUserKeys(userId: String, identityKey: String, registrationId: Int, preKeys: List<Map<String, Any>>, signedPreKey: Map<String, Any>) {
+        val userKeys = hashMapOf(
+            "identityKey" to identityKey,
+            "registrationId" to registrationId,
+            "preKeys" to preKeys,
+            "signedPreKey" to signedPreKey
+        )
+        //Trocado firestore por firebase
+        firebase.collection("users").document(userId).collection("keys").document("publicKeys")
+            .set(userKeys)
+            .await()
+    }
+    */

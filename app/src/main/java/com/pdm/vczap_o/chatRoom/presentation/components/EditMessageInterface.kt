@@ -2,6 +2,7 @@ package com.pdm.vczap_o.chatRoom.presentation.components
 
 import android.widget.Toast
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,7 +41,41 @@ fun EditMessageDialog(
                 label = { Text("Message") },
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences
+                ),
+                // ALTERAÇÃO 28/08/2025 R - Suporte ao envio com tecla Enter
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (editText.isNotBlank()) {
+                            if (connectivityStatus is ConnectivityStatus.Available) {
+                                chatViewModel.updateMessage(
+                                    roomId = roomId,
+                                    messageId = message.id,
+                                    newContent = editText,
+                                    onSuccess = {
+                                        val updatedMessage = message.copy(content = editText)
+                                        onMessageEdited(updatedMessage)
+                                        Toast.makeText(
+                                            context,
+                                            "Message edited successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                    onFailure = { e ->
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to update message",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    },
+                                )
+                                onDismiss()
+                            } else {
+                                Toast.makeText(context, "No internet connection", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                 )
+                // FIM ALTERAÇÃO 28/08/2025 R
             )
         },
         confirmButton = {

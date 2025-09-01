@@ -33,6 +33,7 @@ object MediaCacheManager {
         return file
     }
 
+    /*
     suspend fun getMediaUri(context: Context, url: String): Uri {
         val file = getFileForUrl(context, url)
         if (file.exists()) {
@@ -60,27 +61,76 @@ object MediaCacheManager {
             }
         }
     }
+     */
+
+    suspend fun getMediaUri(context: Context, url: String?): Uri? {
+        // 1. VERIFICA SE O URL É INVÁLIDO (NULO OU VAZIO)
+        if (url.isNullOrBlank()) {
+            Log.d(TAG, "URL de mídia inválida ou nula. A ignorar.")
+            return null // Retorna nulo para evitar o crash
+        }
+
+        val file = getFileForUrl(context, url)
+        if (file.exists()) {
+            Log.d(TAG, "Ficheiro existe no cache: ${file.absolutePath}. A usar a versão em cache.")
+            return Uri.fromFile(file)
+        } else {
+            Log.d(TAG, "Ficheiro não existe no cache. A iniciar download para a URL: $url")
+            return try {
+                withContext(Dispatchers.IO) {
+                    downloadFile(url, file)
+                    evictCacheIfNeeded(getCacheDir(context))
+                }
+                if (file.exists()) {
+                    Uri.fromFile(file)
+                } else {
+                    Log.d(TAG, "Download concluído mas o ficheiro não foi encontrado. A usar o URL original.")
+                    url.toUri()
+                }
+            } catch (e: Exception) {
+                // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de download
+                Log.e(TAG, "Download failed for URL: $url with error: ${e.localizedMessage}")
+                Log.e(TAG, "Tipo de erro: ${e.javaClass.simpleName}")
+                Log.e(TAG, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                url.toUri()
+                // FIM ALTERAÇÃO 28/08/2025 R
+            }
+        }
+    }
 
     @Throws(IOException::class)
     private fun downloadFile(urlString: String, destFile: File) {
-        Log.d(TAG, "Starting download from: $urlString")
-        val url = URL(urlString)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.connectTimeout = 15000
-        connection.readTimeout = 15000
-        connection.connect()
-        if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-            val errorMsg =
-                "Server returned HTTP ${connection.responseCode} ${connection.responseMessage}"
-            throw IOException(errorMsg)
-        }
-        destFile.outputStream().use { output ->
-            connection.inputStream.use { input ->
-                input.copyTo(output)
+        try {
+            // ALTERAÇÃO 28/08/2025 R - Download robusto com validação de resposta HTTP
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = 15000
+            connection.readTimeout = 15000
+            connection.connect()
+            
+            // Verifica se a resposta HTTP foi bem-sucedida
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                throw IOException("HTTP error: $responseCode - ${connection.responseMessage}")
             }
+            
+            destFile.outputStream().use { output ->
+                connection.inputStream.use { input ->
+                    input.copyTo(output)
+                }
+            }
+            connection.disconnect()
+            
+            Log.d(TAG, "Download concluído com sucesso para: $urlString")
+            // FIM ALTERAÇÃO 28/08/2025 R
+        } catch (e: Exception) {
+            // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de download
+            Log.e(TAG, "Error during download of $urlString: ${e.message}")
+            Log.e(TAG, "Tipo de erro: ${e.javaClass.simpleName}")
+            Log.e(TAG, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+            throw e
+            // FIM ALTERAÇÃO 28/08/2025 R
         }
-        connection.disconnect()
-        Log.d(TAG, "Download finished. File saved to: ${destFile.absolutePath}")
     }
 
     private fun evictCacheIfNeeded(cacheDir: File) {

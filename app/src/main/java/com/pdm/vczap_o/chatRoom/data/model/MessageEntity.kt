@@ -15,6 +15,13 @@ data class MessageEntity(
     val content: String,
     val image: String?,
     val audio: String?,
+    // ADICIONADO: Suporte para vídeos e arquivos genéricos
+    val video: String?,
+    val file: String?,
+    val fileName: String?,
+    val fileSize: Long?,
+    val mimeType: String?,
+    // FIM ADICIONADO
     @param:TypeConverters(DateConverter::class)
     val createdAt: Date,
     val senderId: String,

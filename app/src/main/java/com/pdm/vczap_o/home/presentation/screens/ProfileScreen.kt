@@ -63,7 +63,7 @@ fun ProfileScreen(
 
     Scaffold(topBar = {
         CenterAlignedTopAppBar(
-            title = { Text("My Profile", fontWeight = FontWeight.Medium) },
+            title = { Text("Meu Perfil", fontWeight = FontWeight.Medium) },
             colors = TopAppBarDefaults.topAppBarColors().copy(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.primary
@@ -93,7 +93,7 @@ fun ProfileScreen(
                     // Profile Picture
                     AsyncImage(
                         model = userData?.profileUrl ?: "",
-                        contentDescription = "Profile picture",
+                        contentDescription = "Imagem de Perfil",
                         modifier = Modifier
                             .size(120.dp)
                             .clip(CircleShape)
@@ -113,7 +113,7 @@ fun ProfileScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = userData?.username ?: "Username",
+                        text = userData?.username ?: "Nome de Usuário",
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -136,14 +136,14 @@ fun ProfileScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     ProfileDetailItem(
                         icon = Icons.Default.Person,
-                        label = "Username",
-                        value = userData?.username ?: "Not set"
+                        label = "Nome de Usuário",
+                        value = userData?.username ?: "Não definido"
                     )
 
                     ProfileDetailItem(
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = userData?.email ?: "Not set"
+                        value = userData?.email ?: "Não definido"
                     )
                 }
             }
@@ -157,7 +157,7 @@ fun ProfileScreen(
             ) {
                 Icon(Icons.Default.Edit, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Edit Profile")
+                Text("Edite aqui seu Perfil")
             }
         }
     }

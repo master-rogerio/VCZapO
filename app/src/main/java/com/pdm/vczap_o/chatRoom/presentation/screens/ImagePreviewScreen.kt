@@ -1,6 +1,7 @@
 package com.pdm.vczap_o.chatRoom.presentation.screens
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -63,6 +65,8 @@ fun ImagePreviewScreen(
     takenFromCamera: String?,
     profileUrl: String,
     recipientsToken: String,
+    currentUserId: String,
+    otherUserId: String,
 ) {
     var caption by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -107,10 +111,11 @@ fun ImagePreviewScreen(
             caption = caption,
             imageUrl = imageUrl,
             senderName = userData?.username ?: "",
-            roomId = roomId,
-            currentUserId = userData?.userId ?: "",
             profileUrl = profileUrl,
-            recipientsToken = recipientsToken
+            recipientsToken = recipientsToken,
+            roomId = roomId,
+            currentUserId = currentUserId,
+            otherUserId = otherUserId
         )
         if (takenFromCamera == "1") {
             navController.popBackStack()
@@ -189,7 +194,28 @@ fun ImagePreviewScreen(
                 shape = RoundedCornerShape(24.dp),
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences
+                ),
+                // ALTERAÇÃO 28/08/2025 R - Suporte ao envio com tecla Enter
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        // Envia a imagem quando Enter for pressionado
+                        CoroutineScope(Dispatchers.IO).launch {
+                            croppedPicture?.let { uri ->
+                                loading = true
+                                val imageUrl = chatViewModel.uploadImage(uri, userData?.username ?: "")
+                                withContext(Dispatchers.Main) {
+                                    if (imageUrl != null) {
+                                        onSend(imageUrl)
+                                    } else {
+                                        Toast.makeText(context, "Falha no upload da imagem. Verifique sua conexão e tente novamente.", Toast.LENGTH_LONG).show()
+                                    }
+                                    loading = false
+                                }
+                            }
+                        }
+                    }
                 )
+                // FIM ALTERAÇÃO 28/08/2025 R
             )
             Spacer(modifier = Modifier.width(10.dp))
             Icon(
@@ -209,11 +235,11 @@ fun ImagePreviewScreen(
                                     if (imageUrl != null) {
                                         onSend(imageUrl)
                                     } else {
-                                        Toast.makeText(
-                                            context, "Failed to upload image", Toast.LENGTH_SHORT
-                                        ).show()
+                                        // ALTERAÇÃO 28/08/2025 R - Toast informativo para falha no upload
+                                        Toast.makeText(context, "Falha no upload da imagem. Verifique sua conexão e tente novamente.", Toast.LENGTH_LONG).show()
+                                        // FIM ALTERAÇÃO 28/08/2025 R
                                     }
-                                    loading
+                                    loading = false
                                 }
                             }
                         }

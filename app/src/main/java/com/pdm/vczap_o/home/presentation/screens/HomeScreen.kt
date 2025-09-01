@@ -11,7 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,13 +22,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Message // Importe o ícone correto
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhonelinkLock
+import androidx.compose.material.icons.filled.PhonelinkRing
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Textsms
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -58,16 +64,18 @@ import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.ConnectivityStatus
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.presentation.ConnectivityViewModel
+import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.home.presentation.components.ChatListItem
 import com.pdm.vczap_o.home.presentation.viewmodels.HomeViewModel
 import com.pdm.vczap_o.navigation.AuthScreen
+import com.pdm.vczap_o.navigation.ContactsScreenDC // Importe a nova rota
+import com.pdm.vczap_o.navigation.CreateGroupScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SearchUsersScreenDC
 import com.pdm.vczap_o.notifications.data.NotificationTokenManager
 import com.pdm.vczap_o.notifications.data.api.ApiRequestsRepository
 import com.google.firebase.auth.FirebaseAuth
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     navController: NavController,
@@ -174,21 +182,29 @@ fun HomeScreen(
     Scaffold(topBar = {
         Row(
             modifier = Modifier
-                .height(80.dp)
+                .height(110.dp)
                 .fillMaxWidth(1f)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 15.dp)
+                .padding(top = 10.dp)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row {
+
+            Row(modifier = Modifier.padding(top = 25.dp)) {
+                Icon(
+                    imageVector = Icons.Default.PhonelinkLock,
+                    contentDescription = "Logo",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
                 Text(
-                    "V.C Zap-o",
+                    "V.C. Zap-O",
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 24.sp,
-                    textAlign = TextAlign.Center
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    textAlign = TextAlign.End,
                 )
                 if (netActivity.isNotBlank()) {
                     Text(
@@ -199,10 +215,10 @@ fun HomeScreen(
                     )
                 }
             }
-            Row {
+            Row(modifier = Modifier.padding(top = 25.dp)) {
                 Icon(
                     Icons.Outlined.Search,
-                    contentDescription = "",
+                    contentDescription = "Pesquisa",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .clickable(onClick = { navController.navigate(SearchUsersScreenDC) })
@@ -210,7 +226,7 @@ fun HomeScreen(
                 )
                 Icon(
                     Icons.Outlined.MoreVert,
-                    contentDescription = "",
+                    contentDescription = "3 Pontin",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .clickable(onClick = { expanded = true })
@@ -222,7 +238,15 @@ fun HomeScreen(
                     modifier = Modifier,
                     dropItems = listOf(
                         DropMenu(
-                            text = "Profile",
+                            text = "Novo Grupo",
+                            onClick = {
+                                navController.navigate(CreateGroupScreen)
+                                expanded = false
+                            },
+                            icon = Icons.Default.GroupAdd
+                        ),
+                        DropMenu(
+                            text = "Perfil",
                             onClick = {
                                 navController.navigate(MainScreen(1)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -231,7 +255,7 @@ fun HomeScreen(
                             icon = Icons.Default.Person
                         ),
                         DropMenu(
-                            text = "Settings",
+                            text = "Configurações",
                             onClick = {
                                 navController.navigate(MainScreen(2)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -239,13 +263,8 @@ fun HomeScreen(
                             },
                             icon = Icons.Default.Settings
                         ),
-//                        DropMenu(
-//                            text = "notifications",
-//                            onClick = { navController.navigate("notifications") },
-//                            icon = Icons.Default.QrCodeScanner
-//                        ),
                         DropMenu(
-                            text = "Logout",
+                            text = "Sair",
                             onClick = { authViewModel.logout() },
                             icon = Icons.AutoMirrored.Default.Logout
                         ),
@@ -254,31 +273,61 @@ fun HomeScreen(
                 )
             }
         }
-    }, floatingActionButton = {
-        FloatingActionButton(
-            onClick = { navController.navigate(SearchUsersScreenDC) },
-            modifier = Modifier.padding(bottom = 20.dp, end = 5.dp)
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Chat")
-        }
-    }) { paddingValues ->
+    },
+        // ▼▼▼ ALTERAÇÕES SOMENTE AQUI DENTRO ▼▼▼
+        floatingActionButton = {
+            FloatingActionButton(
+                // ANTES: onClick = { navController.navigate(SearchUsersScreenDC) }
+                // AGORA: Navega para a tela de contatos que criamos.
+                onClick = { navController.navigate(ContactsScreenDC) },
+                modifier = Modifier.padding(top = 200.dp, end = 10.dp)
+            ) {
+                // ANTES: Icon(imageVector = Icons.Default.Add, ...
+                // AGORA: Usamos um ícone de mensagem, que combina mais com "iniciar conversa".
+                Icon(imageVector = Icons.Default.Message, contentDescription = "Contatos")
+            }
+        }) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (homeUiState.rooms.isNotEmpty()) {
+            if (homeUiState.rooms.isNotEmpty() || homeUiState.groups.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize(),
                 ) {
-                    items(homeUiState.rooms) { room ->
-                        ChatListItem(
-                            room, navController,
-                            chatViewModel = chatViewModel,
-                            homeViewModel = homeViewModel
-                        )
+                    // Seção de Grupos
+                    if (homeUiState.groups.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Grupos",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(homeUiState.groups) { group ->
+                            GroupListItem(group = group, navController = navController)
+                        }
+                    }
+
+                    // Seção de Conversas
+                    if (homeUiState.rooms.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Conversas",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        items(homeUiState.rooms) { room ->
+                            ChatListItem(
+                                room, navController,
+                                chatViewModel = chatViewModel,
+                                homeViewModel = homeViewModel
+                            )
+                        }
                     }
                 }
             } else if (homeUiState.isLoading) {
@@ -292,11 +341,38 @@ fun HomeScreen(
             } else {
                 EmptyChatPlaceholder(
                     lottieAnimation = R.raw.online_chat,
-                    message = "Press + to search users",
+                    message = "Press the message button to search contacts", // Mensagem ajustada
                     speed = 0.6f,
                     color = MaterialTheme.colorScheme.onBackground
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun GroupListItem(group: Group, navController: NavController) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                Log.d("GroupListItem", "Clicando no grupo: ${group.name} (ID: ${group.id})")
+                navController.navigate("group_details/${group.id}")
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Default.Groups,
+            contentDescription = "Ícone do Grupo",
+            modifier = Modifier.padding(end = 16.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(text = group.name, fontWeight = FontWeight.Bold)
+            Text(text = "${group.members.size} membros", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

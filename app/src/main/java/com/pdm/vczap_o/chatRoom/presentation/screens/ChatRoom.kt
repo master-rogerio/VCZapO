@@ -1,5 +1,10 @@
 package com.pdm.vczap_o.chatRoom.presentation.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import com.pdm.vczap_o.chatRoom.presentation.components.PinnedMessageBar
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -12,12 +17,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -100,11 +107,30 @@ fun ChatScreen(
     val showOverlay by chatViewModel.showRecordingOverlay.collectAsState()
     val fontSize by settingsViewModel.settingsState.collectAsState()
     val chatState by chatViewModel.chatState.collectAsState()
-    val messages by chatViewModel.messages.collectAsState()
     val connectivityStatus by connectivityViewModel.connectivityStatus.collectAsStateWithLifecycle()
 
-//     functions
-//    val messages = generateMockMessages(currentUserId)
+    // ADICIONADO: Estados para status e digitação
+    val otherUserOnlineStatus by chatViewModel.otherUserOnlineStatus.collectAsState()
+    val otherUserTypingStatus by chatViewModel.otherUserTypingStatus.collectAsState()
+    val otherUserLastSeen by chatViewModel.otherUserLastSeen.collectAsState()
+
+    val pinnedMessage by chatViewModel.pinnedMessage.collectAsState()
+
+    val messages by chatViewModel.filteredMessages.collectAsState() // ALTERADO para usar a lista filtrada
+    val searchText by chatViewModel.searchText.collectAsState()
+    val isSearchActive by chatViewModel.isSearchActive.collectAsState()
+
+    // DEBUG TEMPORÁRIO - Logs de mudança de estado
+    LaunchedEffect(otherUserOnlineStatus) {
+        Log.d(tag, "=== CHATROOM: otherUserOnlineStatus mudou para: $otherUserOnlineStatus ===")
+    }
+    LaunchedEffect(otherUserTypingStatus) {
+        Log.d(tag, "=== CHATROOM: otherUserTypingStatus mudou para: $otherUserTypingStatus ===")
+    }
+    LaunchedEffect(otherUserLastSeen) {
+        Log.d(tag, "=== CHATROOM: otherUserLastSeen mudou para: $otherUserLastSeen ===")
+    }
+
     val showScrollToBottom by remember {
         derivedStateOf {
             val firstVisibleIndex = listState.firstVisibleItemIndex
@@ -123,11 +149,98 @@ fun ChatScreen(
                 roomId = roomId,
                 takenFromCamera = false,
                 profileUrl = userData?.profileUrl.orEmpty(),
-                recipientsToken = deviceToken
+                recipientsToken = deviceToken,
+                currentUserId = currentUserId,
+                otherUserId = userId
             )
             navController.navigate(route) {
                 launchSingleTop = true
                 restoreState = true
+            }
+        }
+    }
+
+
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { videoUri ->
+            coroutineScope.launch {
+                try {
+                    Toast.makeText(context, "Fazendo upload do vídeo...", Toast.LENGTH_SHORT).show()
+                    
+                    val videoUrl = chatViewModel.uploadVideo(videoUri, userData?.username ?: "")
+                    if (videoUrl != null) {
+                        chatViewModel.sendVideoMessage(
+                            caption = "", // Sem caption por enquanto
+                            videoUrl = videoUrl,
+                            senderName = userData?.username ?: "",
+                            roomId = roomId,
+                            currentUserId = currentUserId,
+                            profileUrl = userData?.profileUrl ?: "",
+                            recipientsToken = deviceToken
+                        )
+                        Toast.makeText(context, "Vídeo enviado com sucesso!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Falha no upload do vídeo", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erro ao enviar vídeo: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { fileUri ->
+            coroutineScope.launch {
+                try {
+                    Toast.makeText(context, "Fazendo upload do arquivo...", Toast.LENGTH_SHORT).show()
+
+                    val contentResolver = context.contentResolver
+                    val cursor = contentResolver.query(fileUri, null, null, null, null)
+                    var fileName = "arquivo_${System.currentTimeMillis()}"
+                    var fileSize = 0L
+                    var mimeType = contentResolver.getType(fileUri) ?: "application/octet-stream"
+                    
+                    cursor?.use {
+                        if (it.moveToFirst()) {
+                            val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                            val sizeIndex = it.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                            
+                            if (nameIndex != -1) {
+                                fileName = it.getString(nameIndex) ?: fileName
+                            }
+                            if (sizeIndex != -1) {
+                                fileSize = it.getLong(sizeIndex)
+                            }
+                        }
+                    }
+                    
+                    val fileUrl = chatViewModel.uploadFile(fileUri, userData?.username ?: "", fileName)
+                    if (fileUrl != null) {
+                        chatViewModel.sendFileMessage(
+                            caption = "",
+                            fileUrl = fileUrl,
+                            fileName = fileName,
+                            fileSize = fileSize,
+                            mimeType = mimeType,
+                            senderName = userData?.username ?: "",
+                            roomId = roomId,
+                            currentUserId = currentUserId,
+                            profileUrl = userData?.profileUrl ?: "",
+                            recipientsToken = deviceToken
+                        )
+                        Toast.makeText(context, "Arquivo enviado com sucesso!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "Falha no upload do arquivo", Toast.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Erro ao enviar arquivo: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
@@ -164,6 +277,17 @@ fun ChatScreen(
         Log.d(tag, "Initializing chat with roomId: $roomId")
         chatViewModel.initialize(roomId, currentUserId, userId)
     }
+    
+
+    LaunchedEffect(Unit) {
+        chatViewModel.onAppForeground()
+    }
+    
+    DisposableEffect(Unit) {
+        onDispose {
+            chatViewModel.onAppBackground()
+        }
+    }
     LaunchedEffect(connectivityStatus) {
         if (connectivityStatus is ConnectivityStatus.Available) {
             Log.d(tag, "Re-initializing chatroom listener with roomId: $roomId")
@@ -188,11 +312,7 @@ fun ChatScreen(
         previousMessageCount = messages.size
     }
 
-    var showEmptyMessagesAnimation by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(500)
-        showEmptyMessagesAnimation = true
-    }
+    var showEmptyMessagesAnimation by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -201,7 +321,8 @@ fun ChatScreen(
                 username = username,
                 profileUrl = profileUrl,
                 deviceToken = deviceToken,
-            )
+
+                )
             HeaderBar(
                 userData = userData,
                 name = decodedUsername,
@@ -211,7 +332,7 @@ fun ChatScreen(
                 navController = navController,
                 chatOptionsList = listOf(
                     DropMenu(
-                        text = "View Profile",
+                        text = "Ver Perfil",
                         onClick = {
                             val userJson = Gson().toJson(userData)
                             navController.navigate(OtherProfileScreenDC(userJson)) {
@@ -240,8 +361,18 @@ fun ChatScreen(
                     } else {
                         cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                     }
-                }
+                },
+                // ADICIONADO: Parâmetros de status e digitação
+                isUserOnline = otherUserOnlineStatus,
+                isUserTyping = otherUserTypingStatus,
+                lastSeen = otherUserLastSeen,
+                // FIM ADICIONADO
+                isSearchActive = isSearchActive,
+                searchText = searchText,
+                onSearchTextChange = chatViewModel::onSearchTextChange,
+                onToggleSearch = chatViewModel::toggleSearch,
             )
+
         },
         floatingActionButton = {
             if (showScrollToBottom) {
@@ -258,6 +389,21 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // ADICIONADO: A barra de mensagem fixada que aparece e desaparece suavemente
+            AnimatedVisibility(
+                visible = pinnedMessage != null,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                pinnedMessage?.let { message ->
+                    PinnedMessageBar(
+                        pinnedMessage = message,
+                        onUnpin = {
+                            chatViewModel.pinMessage(null) // Passar null para desafixar
+                        }
+                    )
+                }
+            }
             Box {
 //                Background Image
                 Image(
@@ -278,12 +424,12 @@ fun ChatScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(top = 0.dp, bottom = 5.dp)
+                        .padding(top = 0.dp, bottom = 0.dp)
                 ) {
                     if (messages.isEmpty() && showEmptyMessagesAnimation) {
                         EmptyChatPlaceholder(
                             lottieAnimation = R.raw.chat,
-                            message = "Send a message to start a conversation",
+                            message = if (isSearchActive) "Nenhuma mensagem encontrada" else "Envie uma mensagem para iniciar a conversa",
                             speed = 1f,
                             modifier = Modifier
                                 .weight(1f)
@@ -338,7 +484,56 @@ fun ChatScreen(
                                 audioPermissionLauncher.launch(audioPermission)
                             }
                         },
-                        sendLocationMessage = chatViewModel::sendLocationMessage,
+                        onVideoClick = {
+                            // ALTERAÇÃO: Implementar seleção de vídeo
+                            videoPickerLauncher.launch("video/*")
+                        },
+                        // ADICIONADO: Implementar seleção de arquivos genéricos
+                        onFileClick = {
+                            filePickerLauncher.launch("*/*")
+                        },
+                        // ADICIONADO: Implementar envio de emojis como mensagens de texto normais
+                        onEmojiClick = { emoji ->
+                            chatViewModel.sendMessage(
+                                content = emoji,
+                                senderName = userData?.username ?: "",
+                                profileUrl = userData?.profileUrl ?: "",
+                                recipientsToken = deviceToken
+                            )
+                            vibrateDevice(context)
+                            val newMessage = NotificationCompat.MessagingStyle.Message(
+                                emoji, System.currentTimeMillis(), person
+                            )
+                            val hasMessages = ConversationHistoryManager.hasMessages(roomId)
+                            if (hasMessages) {
+                                ConversationHistoryManager.addMessage(roomId, newMessage)
+                            }
+                        },
+                        // ADICIONADO: Implementar envio de stickers como tipo específico
+                        onStickerClick = { sticker ->
+                            chatViewModel.sendStickerMessage(
+                                stickerContent = sticker,
+                                senderName = userData?.username ?: "",
+                                profileUrl = userData?.profileUrl ?: "",
+                                recipientsToken = deviceToken
+                            )
+                            vibrateDevice(context)
+                            val newMessage = NotificationCompat.MessagingStyle.Message(
+                                "🎭 Sticker", System.currentTimeMillis(), person
+                            )
+                            val hasMessages = ConversationHistoryManager.hasMessages(roomId)
+                            if (hasMessages) {
+                                ConversationHistoryManager.addMessage(roomId, newMessage)
+                            }
+                        },
+                        // ADICIONADO: Callbacks para digitação
+                        onUserStartedTyping = {
+                            chatViewModel.onUserStartedTyping()
+                        },
+                        onUserStoppedTyping = {
+                            chatViewModel.onUserStoppedTyping()
+                        },
+                        // FIM ADICIONADO
                         userData = userData,
                         roomId = roomId,
                         recipientToken = deviceToken
@@ -366,5 +561,6 @@ fun ChatScreen(
                 }
             }
         }
-    }
+
+}
 }

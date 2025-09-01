@@ -10,6 +10,7 @@ import com.pdm.vczap_o.home.domain.usecase.GetFCMTokenUseCase
 import com.pdm.vczap_o.home.domain.usecase.GetUnreadMessagesUseCase
 import com.pdm.vczap_o.home.domain.usecase.ListenToRoomsUseCase
 import com.google.firebase.auth.FirebaseAuth
+import com.pdm.vczap_o.group.domain.usecase.GetGroupsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,9 @@ class HomeViewModel @Inject constructor(
     private val getUnreadMessagesUseCase: GetUnreadMessagesUseCase,
     private val getFCMTokenUseCase: GetFCMTokenUseCase,
     private val listenToRoomsUseCase: ListenToRoomsUseCase,
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private val getGroupsUseCase: GetGroupsUseCase,
+    // FIM DA ADIÇÃO - PASSO 5
     context: Context,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -30,13 +34,21 @@ class HomeViewModel @Inject constructor(
     private val cacheHelper = RoomsCache(context = context)
     private val auth = FirebaseAuth.getInstance()
     private var roomsListenerJob = viewModelScope.launch { } // Initialize an empty job
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private var groupsListenerJob = viewModelScope.launch { }
+    // FIM DA ADIÇÃO - PASSO 5
     val uiState: StateFlow<HomeUiState> = _uiState
 
     private fun loadCachedRooms() {
         viewModelScope.launch {
-            val cachedRooms = cacheHelper.loadRooms()
-            _uiState.update { it.copy(rooms = cachedRooms) }
-            logger(tag, "Cached rooms loaded ${cachedRooms.size}")
+            try {
+                val cachedRooms = cacheHelper.loadRooms()
+                _uiState.update { it.copy(rooms = cachedRooms, isLoading = false) }
+                logger(tag, "Cached rooms loaded: ${cachedRooms.size}")
+            } catch (e: Exception) {
+                logger(tag, "Error loading cached rooms: ${e.message}")
+                _uiState.update { it.copy(error = "Error loading cached rooms") }
+            }
         }
     }
 
@@ -44,6 +56,9 @@ class HomeViewModel @Inject constructor(
         if (auth.currentUser != null) {
             loadCachedRooms()
             listenToRooms()
+            // INÍCIO DA ADIÇÃO - PASSO 5
+            listenToGroups()
+            // FIM DA ADIÇÃO - PASSO 5
         } else {
             _uiState.update { it.copy(error = "User not authenticated") }
         }
@@ -69,31 +84,92 @@ class HomeViewModel @Inject constructor(
 
         _uiState.update { it.copy(isLoading = true, error = null) }
         roomsListenerJob = viewModelScope.launch {
-            listenToRoomsUseCase(userId).collectLatest { result ->
-                result.onSuccess { roomsList ->
-                    _uiState.update { it.copy(rooms = roomsList, isLoading = false) }
-                    cacheHelper.saveRooms(roomsList)
-                }
-                result.onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            error = "Failed to load rooms: ${error.message}",
-                            isLoading = false
-                        )
+            try {
+                listenToRoomsUseCase(userId).collectLatest { result ->
+                    result.onSuccess { roomsList ->
+                        _uiState.update { it.copy(rooms = roomsList, isLoading = false, error = null) }
+
+                        viewModelScope.launch {
+                            try {
+                                cacheHelper.saveRooms(roomsList)
+                                logger(tag, "Rooms saved to cache: ${roomsList.size}")
+                            } catch (e: Exception) {
+                                logger(tag, "Error saving rooms to cache: ${e.message}")
+                            }
+                        }
+
+                        logger(tag, "Rooms updated: ${roomsList.size}")
                     }
-                    logger(tag, "Failed to load rooms: ${error.message}")
+                    result.onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                error = "Failed to load rooms: ${error.message}",
+                                isLoading = false
+                            )
+                        }
+                        logger(tag, "Failed to load rooms: ${error.message}")
+                    }
                 }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        error = "Error in rooms listener: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                logger(tag, "Error in rooms listener: ${e.message}")
             }
         }
     }
 
+    // INÍCIO DA ADIÇÃO - PASSO 5
+    private fun listenToGroups() {
+        val userId = auth.currentUser?.uid ?: run {
+            _uiState.update { it.copy(error = "User not authenticated") }
+            return
+        }
+
+        groupsListenerJob = viewModelScope.launch {
+            try {
+                getGroupsUseCase(userId).collectLatest { result ->
+                    result.onSuccess { groupsList ->
+                        _uiState.update { it.copy(groups = groupsList) }
+                        logger(tag, "Groups updated: ${groupsList.size}")
+                    }
+                    result.onFailure { error ->
+                        _uiState.update {
+                            it.copy(error = "Failed to load groups: ${error.message}")
+                        }
+                        logger(tag, "Failed to load groups: ${error.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(error = "Error in groups listener: ${e.message}")
+                }
+                logger(tag, "Error in groups listener: ${e.message}")
+            }
+        }
+    }
+    // FIM DA ADIÇÃO - PASSO 5
+
     fun retryLoadRooms() {
         roomsListenerJob.cancel()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        groupsListenerJob.cancel()
+        // FIM DA ADIÇÃO - PASSO 5
         listenToRooms()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        listenToGroups()
+        // FIM DA ADIÇÃO - PASSO 5
     }
 
     override fun onCleared() {
         roomsListenerJob.cancel()
+        // INÍCIO DA ADIÇÃO - PASSO 5
+        groupsListenerJob.cancel()
+        // FIM DA ADIÇÃO - PASSO 5
         super.onCleared()
     }
 }
+

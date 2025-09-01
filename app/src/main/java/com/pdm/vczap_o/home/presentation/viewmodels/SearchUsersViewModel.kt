@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.home.domain.model.SearchUsersUiState
-import com.pdm.vczap_o.home.domain.usecase.SearchUsersUseCase
 import com.google.firebase.auth.FirebaseAuth
+import com.pdm.vczap_o.home.domain.usecase.SearchUsersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,7 +52,7 @@ class SearchUsersViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             filteredUsers = users,
-                            errorMessage = if (users.isEmpty() && query.isNotEmpty()) "No users found" else "Search users"
+                            errorMessage = if (users.isEmpty() && query.isNotEmpty()) "Nenhum usuário encontrado" else "Encontre usuários"
                         )
                     }
                 }

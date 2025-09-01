@@ -1,0 +1,73 @@
+Index: app/build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import org.jetbrains.kotlin.gradle.dsl.JvmTarget\r\n\r\nplugins {\r\n    alias(libs.plugins.android.application)\r\n    alias(libs.plugins.kotlin.android)\r\n    alias(libs.plugins.kotlin.compose)\r\n    alias(libs.plugins.baselineprofile)\r\n    alias(libs.plugins.ksp)\r\n    alias(libs.plugins.hilt)\r\n    alias(libs.plugins.kotlin.serialization)\r\n    id(\"com.google.gms.google-services\")\r\n}\r\n\r\nandroid {\r\n    namespace = \"com.pdm.vczap_o\"\r\n    compileSdk = 36\r\n\r\n    defaultConfig {\r\n        applicationId = \"com.pdm.vczap_o\"\r\n        minSdk = 24\r\n        targetSdk = 36\r\n        versionCode = 1\r\n        versionName = \"1.0\"\r\n\r\n        testInstrumentationRunner = \"androidx.test.runner.AndroidJUnitRunner\"\r\n    }\r\n\r\n    buildTypes {\r\n        release {\r\n            val boolean = false\r\n            isMinifyEnabled = boolean\r\n            isShrinkResources = boolean\r\n            proguardFiles(\r\n                getDefaultProguardFile(\"proguard-android-optimize.txt\"),\r\n                \"proguard-rules.pro\"\r\n            )\r\n        }\r\n    }\r\n    compileOptions {\r\n        sourceCompatibility = JavaVersion.VERSION_11\r\n        targetCompatibility = JavaVersion.VERSION_11\r\n    }\r\n    kotlin {\r\n        compilerOptions {\r\n            jvmTarget = JvmTarget.JVM_11\r\n        }\r\n    }\r\n    buildFeatures {\r\n        compose = true\r\n    }\r\n}\r\n\r\ndependencies {\r\n    // CameraX\r\n    implementation(libs.androidx.camera.core)\r\n    implementation(libs.androidx.camera.camera2)\r\n    implementation(libs.androidx.camera.lifecycle)\r\n    implementation(libs.androidx.camera.view)\r\n\r\n    // Room Database\r\n    implementation(libs.androidx.room.runtime)\r\n    ksp(libs.room.compiler)\r\n    implementation(libs.androidx.room.ktx)\r\n\r\n    // Status Bar\r\n    implementation(libs.accompanist.systemuicontroller)\r\n\r\n    //Datastore\r\n    implementation(libs.androidx.datastore.preferences)\r\n\r\n    // Lottie animations\r\n    implementation(libs.lottie.compose)\r\n\r\n    // Google maps\r\n    implementation(libs.play.services.location)\r\n\r\n    // Image Cropping\r\n    implementation(libs.ucrop)\r\n\r\n    // Media player\r\n    implementation(libs.androidx.media3.exoplayer)\r\n    implementation(libs.androidx.media3.ui)\r\n\r\n    // Gson\r\n    implementation(libs.gson)\r\n\r\n    // Material Icons\r\n    implementation(libs.androidx.material.icons.extended)\r\n\r\n    // Baseline profile\r\n    implementation(libs.androidx.profileinstaller)\r\n    \"baselineProfile\"(project(\":baselineprofile\"))\r\n    testImplementation(libs.junit)\r\n    androidTestImplementation(libs.androidx.junit)\r\n    androidTestImplementation(libs.androidx.espresso.core)\r\n    androidTestImplementation(libs.androidx.ui.test.junit4)\r\n    androidTestImplementation(libs.androidx.benchmark.macro.junit4)\r\n\r\n    // Async Image\r\n    implementation(libs.coil.compose)\r\n\r\n    // Firebase libs\r\n    implementation(platform(libs.firebase.bom))\r\n    implementation(libs.firebase.auth.ktx)\r\n    implementation(libs.firebase.firestore.ktx)\r\n    implementation(libs.firebase.storage.ktx)\r\n    implementation(libs.firebase.messaging.ktx)\r\n\r\n    // Navigation lib\r\n    implementation(libs.androidx.navigation.compose)\r\n\r\n    //Retrofit API\r\n    implementation(libs.retrofit)\r\n    implementation(libs.converter.gson)\r\n\r\n    // Dependency Injection\r\n    implementation(libs.hilt.android)\r\n    implementation(libs.androidx.hilt.navigation.compose)\r\n    ksp(libs.hilt.android.compiler)\r\n\r\n    implementation(libs.material3)\r\n\r\n    implementation(libs.kotlinx.serialization.json)\r\n\r\n    // Default libs\r\n    implementation(libs.androidx.core.ktx)\r\n    implementation(libs.androidx.lifecycle.runtime.ktx)\r\n    implementation(libs.androidx.activity.compose)\r\n    implementation(platform(libs.androidx.compose.bom))\r\n    implementation(libs.androidx.ui)\r\n    implementation(libs.androidx.ui.graphics)\r\n    implementation(libs.androidx.ui.tooling.preview)\r\n    androidTestImplementation(platform(libs.androidx.compose.bom))\r\n    debugImplementation(libs.androidx.ui.tooling)\r\n    debugImplementation(libs.androidx.ui.test.manifest)\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts	(revision 9a56b1360b2d8f60123f909d7497e6bc82dc7f03)
++++ b/app/build.gradle.kts	(date 1756158381244)
+@@ -122,6 +122,8 @@
+ 
+     implementation(libs.kotlinx.serialization.json)
+ 
++    implementation("org.signal:libgsignal-client:0.23.0")
++
+     // Default libs
+     implementation(libs.androidx.core.ktx)
+     implementation(libs.androidx.lifecycle.runtime.ktx)
+Index: .idea/appInsightsSettings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/appInsightsSettings.xml b/.idea/appInsightsSettings.xml
+new file mode 100644
+--- /dev/null	(date 1756014624803)
++++ b/.idea/appInsightsSettings.xml	(date 1756014624803)
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AppInsightsSettings">
++    <option name="tabSettings">
++      <map>
++        <entry key="Firebase Crashlytics">
++          <value>
++            <InsightsFilterSettings>
++              <option name="connection">
++                <ConnectionSetting>
++                  <option name="appId" value="com.pdm.vczap_o" />
++                  <option name="mobileSdkAppId" value="1:882700073778:android:b284e58a62e4dfc1e1352b" />
++                  <option name="projectId" value="vc-zapo" />
++                  <option name="projectNumber" value="882700073778" />
++                </ConnectionSetting>
++              </option>
++              <option name="signal" value="SIGNAL_UNSPECIFIED" />
++              <option name="timeIntervalDays" value="THIRTY_DAYS" />
++              <option name="visibilityType" value="ALL" />
++            </InsightsFilterSettings>
++          </value>
++        </entry>
++      </map>
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/studiobot.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/studiobot.xml b/.idea/studiobot.xml
+new file mode 100644
+--- /dev/null	(date 1755925694937)
++++ b/.idea/studiobot.xml	(date 1755925694937)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="StudioBotProjectSettings">
++    <option name="shareContext" value="OptedIn" />
++  </component>
++</project>
+\ No newline at end of file

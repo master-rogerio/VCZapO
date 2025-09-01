@@ -64,7 +64,9 @@ class RoomRepository @Inject constructor(
                                     lastMessage = data["lastMessage"] as? String ?: "",
                                     lastMessageTimestamp = data["lastMessageTimestamp"] as? Timestamp,
                                     lastMessageSenderId = (data["lastMessageSenderId"] as? String).toString(),
-                                    otherParticipant = user
+                                    otherParticipant = user,
+                                    // Incluindo o novo campo ao ler os dados
+                                    pinnedMessageId = data["pinnedMessageId"] as? String
                                 )
                             )
                         }
@@ -102,6 +104,30 @@ class RoomRepository @Inject constructor(
         } catch (e: Exception) {
             logger(tag, "Error fetching user $userId: ${e.message}")
             Result.failure(e)
+        }
+    }
+
+
+
+    suspend fun pinMessage(roomId: String, messageId: String?) {
+        try {
+            firestore.collection("rooms").document(roomId)
+                .update("pinnedMessageId", messageId)
+                .await()
+        } catch (e: Exception) {
+            logger("RoomRepository", "Error pinning message: ${e.message}")
+            throw e
+        }
+    }
+
+
+    suspend fun getRoom(roomId: String): RoomData? {
+        return try {
+            val document = firestore.collection("rooms").document(roomId).get().await()
+            document.toObject(RoomData::class.java)
+        } catch (e: Exception) {
+            logger("RoomRepository", "Error getting room data: ${e.message}")
+            null
         }
     }
 }

@@ -1,74 +1,339 @@
 package com.pdm.vczap_o.chatRoom.data.repository
 
-import android.content.Context
+import android.app.Application
+import android.util.Base64
 import android.util.Log
-import com.pdm.vczap_o.chatRoom.data.local.MessageDao
-import com.pdm.vczap_o.chatRoom.data.local.toChatMessage
-import com.pdm.vczap_o.chatRoom.data.local.toMessageEntity
-import com.pdm.vczap_o.chatRoom.data.model.MessageEntity
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.model.ChatMessage
 import com.pdm.vczap_o.core.model.Location
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentChange
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
-import com.pdm.vczap_o.chatRoom.data.local.ChatDatabase
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+import com.pdm.vczap_o.cripto.CryptoService
+import com.pdm.vczap_o.cripto.EnhancedCryptoUtils
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.tasks.await
-import java.util.Date
 import javax.inject.Inject
 
+/**
+ * Repositório aprimorado para recebimento de mensagens com decriptografia robusta
+ */
 class MessageRepository @Inject constructor(
-    private val messageDao: MessageDao,
     private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
+    private val application: Application,
+    private val cryptoService: CryptoService
 ) {
-    private val tag = "MessageRepository"
+    private val tag = "EnhancedMessageRepository"
 
-    suspend fun createRoomIfNeeded(
+    /**
+     * Obtém mensagens de uma sala com decriptografia automática
+     */
+    suspend fun getMessages(
         roomId: String,
-        currentUserId: String,
-        otherUserId: String,
+        onMessagesUpdated: (List<ChatMessage>) -> Unit,
+        onError: (String) -> Unit
     ) {
         try {
-            Log.d(tag, "Checking if room exists for roomId=$roomId")
-            val roomRef = firestore.collection("rooms").document(roomId)
-            val room = roomRef.get().await()
+            val currentUserId = auth.currentUser?.uid
+            if (currentUserId == null) {
+                onError("Usuário não autenticado")
+                return
+            }
 
-            if (!room.exists()) {
-                Log.d(tag, "Room does not exist. Creating new room with roomId=$roomId")
-                val roomData = hashMapOf(
-                    "participants" to listOf(currentUserId, otherUserId),
-                    "createdAt" to Timestamp.Companion.now(),
-                    "lastMessage" to "",
-                    "lastMessageTimestamp" to Timestamp.Companion.now()
-                )
-                roomRef.set(roomData).await()
-                Log.d(tag, "Room created successfully for roomId=$roomId")
-            } else {
-                Log.d(tag, "Room already exists for roomId=$roomId")
+            // Verifica se o usuário tem chaves inicializadas
+            if (!cryptoService.isUserInitialized(currentUserId)) {
+                Log.d(tag, "Inicializando chaves para usuário $currentUserId")
+                val initialized = cryptoService.initializeUserKeys(currentUserId)
+                if (!initialized) {
+                    onError("Falha ao inicializar chaves de criptografia")
+                    return
+                }
+            }
+
+            val messagesRef = firestore.collection("rooms").document(roomId)
+                .collection("messages")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+
+            val listener = messagesRef.addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    logger(tag, "Erro no listener de mensagens: ${error.message}")
+                    onError("Erro ao carregar mensagens: ${error.message}")
+                    return@addSnapshotListener
+                }
+
+                snapshot?.let { querySnapshot ->
+                    Log.d(tag, "Snapshot recebido com ${querySnapshot.documents.size} documentos")
+                    val messagesList = querySnapshot.documents.mapNotNull { doc ->
+                        try {
+                            parseAndDecryptMessage(doc, currentUserId)
+                        } catch (e: Exception) {
+                            logger("chat", "Erro ao processar mensagem com id=${doc.id}: ${e.message}")
+                            null
+                        }
+                    }
+
+                    onMessagesUpdated(messagesList)
+                }
             }
         } catch (e: Exception) {
-            logger(tag, "Error creating room if needed $e")
-            throw e
+            logger(tag, "Erro ao configurar listener de mensagens: ${e.message}")
+            onError("Erro ao configurar mensagens: ${e.message}")
         }
     }
 
-    suspend fun getMessagesForRoom(roomId: String): List<ChatMessage> {
-        return messageDao.getMessagesForRoom(roomId)
-            .map { messageEntities ->
-                messageEntities.map { it.toChatMessage() }
+    /**
+     * Processa e decriptografa uma mensagem individual
+     */
+    private fun parseAndDecryptMessage(
+        doc: com.google.firebase.firestore.DocumentSnapshot,
+        currentUserId: String
+    ): ChatMessage? {
+        val data = doc.data ?: return null
+        val senderId = data["senderId"] as? String ?: ""
+        var content = data["content"] as? String ?: ""
+        val encryptionType = (data["encryptionType"] as? Number)?.toInt()
+        val originalContent = data["originalContent"] as? String // Para mensagens próprias
+
+        Log.d(tag, "Processando mensagem: senderId=$senderId, currentUser=$currentUserId, encryptionType=$encryptionType")
+
+        // Se a mensagem foi enviada pelo usuário atual
+        if (senderId == currentUserId) {
+            // Para mensagens próprias, usa o conteúdo original se disponível
+            if (!originalContent.isNullOrBlank()) {
+                content = originalContent
+                Log.d(tag, "Usando conteúdo original para mensagem própria")
+            } else if (encryptionType != null && content.isNotBlank()) {
+                // Tenta decriptografar mensagem própria se necessário
+                try {
+                    val decryptedContent = runBlocking {
+                        decryptOwnMessage(currentUserId, content, encryptionType)
+                    }
+                    if (decryptedContent != null) {
+                        content = decryptedContent
+                        Log.d(tag, "Mensagem própria decriptografada com sucesso")
+                    }
+                } catch (e: Exception) {
+                    Log.e(tag, "Erro ao decriptografar mensagem própria: ${e.message}")
+                }
             }
-            .first()
+        } else {
+            // ALTERAÇÃO 28/08/2025 R - Decriptografia com tratamento robusto de erros
+            if (content.isNotBlank() && encryptionType != null) {
+                try {
+                    val decodedContent = Base64.decode(content, Base64.DEFAULT)
+                    val decryptedContent = runBlocking {
+                        cryptoService.decryptMessage(
+                            currentUserId,
+                            senderId,
+                            decodedContent,
+                            encryptionType
+                        )
+                    }
+                    if (decryptedContent != null) {
+                        content = decryptedContent
+                        Log.d(tag, "Mensagem decriptografada com sucesso de $senderId")
+                    } else {
+                        Log.w(tag, "Falha ao decriptografar mensagem de $senderId - resultado nulo")
+                    }
+                } catch (e: Exception) {
+                    // ALTERAÇÃO 28/08/2025 R - Log detalhado de erro de decriptografia
+                    Log.e(tag, "Erro ao decriptografar mensagem de $senderId: ${e.message}")
+                    Log.e(tag, "Tipo de erro: ${e.javaClass.simpleName}")
+                    Log.e(tag, "Conteúdo criptografado: $content")
+                    Log.e(tag, "Tipo de criptografia: $encryptionType")
+                    Log.e(tag, "Stack trace: ${e.stackTrace.joinToString("\n")}")
+                    // FIM ALTERAÇÃO 28/08/2025 R
+                }
+            }
+        }
+
+        return ChatMessage(
+            id = doc.id,
+            content = content,
+            image = data["image"] as? String,
+            audio = data["audio"] as? String,
+            // ADICIONADO: Campos para vídeos e arquivos
+            video = data["video"] as? String,
+            file = data["file"] as? String,
+            fileName = data["fileName"] as? String,
+            fileSize = (data["fileSize"] as? Number)?.toLong(),
+            mimeType = data["mimeType"] as? String,
+            // FIM ADICIONADO
+            createdAt = (data["createdAt"] as? Timestamp)?.toDate() ?: java.util.Date(),
+            senderId = senderId,
+            senderName = data["senderName"] as? String ?: "",
+            replyTo = data["replyTo"] as? String,
+            read = data["read"] as? Boolean == true,
+            type = data["type"] as? String ?: "text",
+            delivered = data["delivered"] as? Boolean == true,
+            location = (data["location"] as? Map<*, *>)?.let { loc ->
+                Location(
+                    latitude = (loc["latitude"] as? Number)?.toDouble() ?: 0.0,
+                    longitude = (loc["longitude"] as? Number)?.toDouble() ?: 0.0
+                )
+            },
+            duration = (data["duration"] as? Number)?.toLong(),
+            reactions = data["reactions"] as? MutableMap<String, String> ?: mutableMapOf(),
+            encryptionType = encryptionType
+        )
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    @Suppress("UNCHECKED_CAST")
+    /**
+     * Decriptografa mensagem própria (para exibição local)
+     */
+    private suspend fun decryptOwnMessage(
+        userId: String,
+        encryptedContent: String,
+        encryptionType: Int
+    ): String? {
+        return try {
+            val decodedContent = when (encryptionType) {
+                1 -> Base64.decode(encryptedContent, Base64.DEFAULT)
+                else -> Base64.decode(encryptedContent, Base64.DEFAULT)
+            }
+
+            // Para mensagens próprias, tenta decriptografar usando a própria chave
+            cryptoService.decryptMessage(userId, userId, decodedContent, encryptionType)
+        } catch (e: Exception) {
+            Log.e(tag, "Erro ao decriptografar mensagem própria: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Marca uma mensagem como lida
+     */
+    suspend fun markMessageAsRead(roomId: String, messageId: String): Result<Unit> {
+        return try {
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update("read", true)
+                .await()
+
+            Log.d(tag, "Mensagem $messageId marcada como lida")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao marcar mensagem como lida: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Marca uma mensagem como entregue
+     */
+    suspend fun markMessageAsDelivered(roomId: String, messageId: String): Result<Unit> {
+        return try {
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update("delivered", true)
+                .await()
+
+            Log.d(tag, "Mensagem $messageId marcada como entregue")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao marcar mensagem como entregue: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Adiciona uma reação a uma mensagem
+     */
+    suspend fun addReaction(
+        roomId: String,
+        messageId: String,
+        userId: String,
+        reaction: String
+    ): Result<Unit> {
+        return try {
+            if (!EnhancedCryptoUtils.isValidUserId(userId)) {
+                throw IllegalArgumentException("ID de usuário inválido")
+            }
+
+            val sanitizedReaction = EnhancedCryptoUtils.sanitizeString(reaction)
+            if (sanitizedReaction.isBlank()) {
+                throw IllegalArgumentException("Reação inválida")
+            }
+
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update("reactions.$userId", sanitizedReaction)
+                .await()
+
+            Log.d(tag, "Reação '$sanitizedReaction' adicionada à mensagem $messageId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao adicionar reação: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Remove uma reação de uma mensagem
+     */
+    suspend fun removeReaction(
+        roomId: String,
+        messageId: String,
+        userId: String
+    ): Result<Unit> {
+        return try {
+            if (!EnhancedCryptoUtils.isValidUserId(userId)) {
+                throw IllegalArgumentException("ID de usuário inválido")
+            }
+
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update("reactions.$userId", com.google.firebase.firestore.FieldValue.delete())
+                .await()
+
+            Log.d(tag, "Reação removida da mensagem $messageId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao remover reação: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Verifica a integridade das chaves do usuário atual
+     */
+    suspend fun verifyCurrentUserKeyIntegrity(): Result<Boolean> {
+        return try {
+            val currentUserId = auth.currentUser?.uid
+            if (currentUserId == null) {
+                return Result.failure(Exception("Usuário não autenticado"))
+            }
+
+            val isValid = cryptoService.verifyKeyIntegrity(currentUserId)
+            Result.success(isValid)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao verificar integridade das chaves: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Limpa as sessões do usuário atual
+     */
+    suspend fun cleanupCurrentUserSessions(): Result<Unit> {
+        return try {
+            val currentUserId = auth.currentUser?.uid
+            if (currentUserId == null) {
+                return Result.failure(Exception("Usuário não autenticado"))
+            }
+
+            cryptoService.cleanupUserSessions(currentUserId)
+            Log.d(tag, "Sessões limpas para usuário $currentUserId")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            logger(tag, "Erro ao limpar sessões: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    // Métodos adicionais para suportar os UseCases
     fun addMessageListener(
         roomId: String,
         onMessagesUpdated: (List<ChatMessage>) -> Unit,
@@ -86,186 +351,146 @@ class MessageRepository @Inject constructor(
             }
 
             snapshot?.let { querySnapshot ->
-                Log.d(
-                    tag,
-                    "Firestore snapshot received with ${querySnapshot.documents.size} documents"
-                )
+                Log.d(tag, "Firestore snapshot received with ${querySnapshot.documents.size} documents")
                 val messagesList = querySnapshot.documents.mapNotNull { doc ->
                     try {
-                        val data = doc.data ?: return@mapNotNull null
-                        ChatMessage(
-                            id = doc.id,
-                            content = data["content"] as? String ?: "",
-                            image = data["image"] as? String,
-                            audio = data["audio"] as? String,
-                            createdAt = (data["createdAt"] as? Timestamp)?.toDate() ?: Date(),
-                            senderId = data["senderId"] as? String ?: "",
-                            senderName = data["senderName"] as? String ?: "",
-                            replyTo = data["replyTo"] as? String,
-                            read = data["read"] as? Boolean == true,
-                            type = data["type"] as? String ?: "text",
-                            delivered = data["delivered"] as? Boolean == true,
-                            location = (data["location"] as? Map<*, *>)?.let { loc ->
-                                Location(
-                                    latitude = (loc["latitude"] as? Number)?.toDouble() ?: 0.0,
-                                    longitude = (loc["longitude"] as? Number)?.toDouble() ?: 0.0
-                                )
-                            },
-                            duration = (data["duration"] as? Number)?.toLong(),
-                            reactions = data["reactions"] as? MutableMap<String, String>
-                                ?: mutableMapOf()
-                        )
+                        parseAndDecryptMessage(doc, auth.currentUser?.uid ?: "")
                     } catch (e: Exception) {
-                        logger(
-                            "chat",
-                            "Error parsing message document with id=${doc.id}: ${e.message}"
-                        )
+                        logger("chat", "Error parsing message document with id=${doc.id}: ${e.message}")
                         null
                     }
                 }
 
                 onMessagesUpdated(messagesList)
-
-                querySnapshot.documentChanges.forEach { change ->
-                    if (change.type == DocumentChange.Type.REMOVED) {
-                        val deletedMessageId = change.document.id
-                        try {
-                            GlobalScope.launch {
-                                messageDao.deleteMessage(deletedMessageId)
-                            }
-                            Log.d(tag, "Message $deletedMessageId deleted successfully")
-                        } catch (e: Exception) {
-                            logger(tag, "Error deleting message: $e")
-                        }
-                    }
-                }
-
-                try {
-                    GlobalScope.launch {
-                        val messageEntities = messagesList.map { it.toMessageEntity(roomId) }
-                        messageDao.insertMessages(messageEntities)
-                    }
-                    Log.d(tag, "Messages stored successfully")
-                } catch (e: Exception) {
-                    logger(tag, "Error storing messages in local database $e")
-                }
-            } ?: run {
-                Log.d(tag, "Firestore snapshot is null")
             }
         }
-
         return listener
     }
 
     fun removeMessageListener(listener: Any) {
-        if (listener is ListenerRegistration) {
+        if (listener is com.google.firebase.firestore.ListenerRegistration) {
             listener.remove()
-            Log.d(tag, "Firestore message listener removed")
         }
     }
 
-    suspend fun markMessagesAsRead(
-        roomId: String,
-        userId: String,
-        messages: List<ChatMessage>,
-    ) {
-        try {
-            val unreadMessages = messages.filter {
-                !it.read && it.senderId != userId
-            }
+    suspend fun getMessagesForRoom(roomId: String): List<ChatMessage> {
+        return try {
+            val snapshot = firestore.collection("rooms").document(roomId).collection("messages")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .await()
 
-            if (unreadMessages.isNotEmpty()) {
-                val batch = firestore.batch()
-                unreadMessages.forEach { message ->
-                    val messageRef = firestore.collection("rooms").document(roomId)
-                        .collection("messages").document(message.id)
-                    batch.update(messageRef, "read", true)
-                }
-                batch.commit().await()
-                Log.d(tag, "Marking ${unreadMessages.size} messages as read")
-            }
-        } catch (e: Exception) {
-            logger(tag, "Error marking messages as read $e")
-            throw e
-        }
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    fun updateMessage(
-        roomId: String,
-        messageId: String,
-        newContent: String,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit,
-        context: Context,
-    ) {
-        val messageDao = ChatDatabase.Companion.getDatabase(context).messageDao()
-        val db = FirebaseFirestore.getInstance()
-
-        val messageRef = db.collection("rooms")
-            .document(roomId)
-            .collection("messages")
-            .document(messageId)
-
-        messageRef.update("content", newContent)
-            .addOnSuccessListener {
-                onSuccess()
-                GlobalScope.launch { messageDao.editMessage(messageId, newContent) }
-            }
-            .addOnFailureListener { exception -> onFailure(exception) }
-    }
-
-
-    suspend fun prefetchNewMessagesForRoom(roomId: String) {
-        val cachedMessages = messageDao.getMessagesForRoom(roomId).first()
-        Log.d(tag, "Got ${cachedMessages.size} from Messages prefetch, roomId:$roomId")
-        val lastCachedTime: Date = cachedMessages.firstOrNull()?.createdAt ?: Date(0)
-
-        try {
-            val querySnapshot =
-                firestore.collection("rooms").document(roomId).collection("messages")
-                    .whereGreaterThan("createdAt", Timestamp(lastCachedTime)).get().await()
-
-            val newMessages = querySnapshot.documents.mapNotNull { doc ->
-                val data = doc.data ?: return@mapNotNull null
+            snapshot.documents.mapNotNull { doc ->
                 try {
-                    MessageEntity(
-                        id = doc.id,
-                        content = data["content"] as? String ?: "",
-                        image = data["image"] as? String,
-                        audio = data["audio"] as? String,
-                        createdAt = (data["createdAt"] as? Timestamp)?.toDate() ?: Date(),
-                        senderId = data["senderId"] as? String ?: "",
-                        senderName = data["senderName"] as? String ?: "",
-                        replyTo = data["replyTo"] as? String,
-                        read = data["read"] as? Boolean == true,
-                        type = data["type"] as? String ?: "text",
-                        delivered = data["delivered"] as? Boolean == true,
-                        location = (data["location"] as? Map<*, *>)?.let { loc ->
-                            val lat = (loc["latitude"] as? Number)?.toDouble() ?: 0.0
-                            val lon = (loc["longitude"] as? Number)?.toDouble() ?: 0.0
-                            Location(lat, lon)
-                        },
-                        duration = (data["duration"] as? Number)?.toLong(),
-                        roomId = roomId,
-                        reactions = data["reactions"] as? MutableMap<String, String>
-                            ?: mutableMapOf()
-                    )
+                    parseAndDecryptMessage(doc, auth.currentUser?.uid ?: "")
                 } catch (e: Exception) {
-                    Log.e(tag, "Error parsing message ${doc.id}: ${e.message}")
+                    logger("chat", "Error parsing message document with id=${doc.id}: ${e.message}")
                     null
                 }
             }
+        } catch (e: Exception) {
+            logger(tag, "Error getting messages for room: ${e.message}")
+            emptyList()
+        }
+    }
 
-            if (newMessages.isNotEmpty()) {
-                messageDao.insertMessages(newMessages)
-                Log.d(tag, "Inserted ${newMessages.size} new messages into local DB.")
-            } else {
-                Log.d(tag, "No new messages found for room: $roomId.")
+    suspend fun markMessagesAsRead(roomId: String, messageIds: List<String>) {
+        try {
+            val batch = firestore.batch()
+            messageIds.forEach { messageId ->
+                val messageRef = firestore.collection("rooms").document(roomId)
+                    .collection("messages").document(messageId)
+                batch.update(messageRef, "read", true)
+            }
+            batch.commit().await()
+        } catch (e: Exception) {
+            logger(tag, "Error marking messages as read: ${e.message}")
+        }
+    }
+
+    fun updateMessage(roomId: String, messageId: String, updates: Map<String, Any>) {
+        try {
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update(updates)
+        } catch (e: Exception) {
+            logger(tag, "Error updating message: ${e.message}")
+        }
+    }
+
+    suspend fun prefetchNewMessagesForRoom(roomId: String) {
+        try {
+            // Implementar lógica de prefetch se necessário
+            Log.d(tag, "Prefetching messages for room: $roomId")
+        } catch (e: Exception) {
+            logger(tag, "Error prefetching messages: ${e.message}")
+        }
+    }
+
+    fun addReactionToMessage(
+        roomId: String,
+        messageId: String,
+        userId: String,
+        emoji: String,
+        messageContent: String
+    ) {
+        try {
+            firestore.collection("rooms").document(roomId)
+                .collection("messages").document(messageId)
+                .update("reactions.$userId", emoji)
+        } catch (e: Exception) {
+            logger(tag, "Error adding reaction: ${e.message}")
+        }
+    }
+
+    suspend fun sendLocationMessage(
+        roomId: String,
+        senderId: String,
+        senderName: String,
+        location: com.pdm.vczap_o.core.model.Location
+    ) {
+        try {
+            val messageData = hashMapOf(
+                "content" to "📍 Shared a location",
+                "createdAt" to com.google.firebase.Timestamp.now(),
+                "senderId" to senderId,
+                "senderName" to senderName,
+                "type" to "location",
+                "read" to false,
+                "delivered" to false,
+                "location" to mapOf(
+                    "latitude" to location.latitude,
+                    "longitude" to location.longitude
+                )
+            )
+
+            firestore.collection("rooms").document(roomId).collection("messages")
+                .add(messageData).await()
+        } catch (e: Exception) {
+            logger(tag, "Error sending location message: ${e.message}")
+        }
+    }
+
+    suspend fun createRoomIfNeeded(roomId: String, currentUserId: String, otherUserId: String) {
+        try {
+            val roomRef = firestore.collection("rooms").document(roomId)
+            val roomDoc = roomRef.get().await()
+
+            if (!roomDoc.exists()) {
+                val roomData = hashMapOf(
+                    "id" to roomId,
+                    "participants" to listOf(currentUserId, otherUserId),
+                    "createdAt" to com.google.firebase.Timestamp.now(),
+                    "lastMessage" to "",
+                    // CÓDIGO ORIGINAL REMOVIDO EM 29/12/2024 R - Nomes dos campos originais
+                    "lastMessageTime" to com.google.firebase.Timestamp.now(),
+                    "lastMessageSender" to ""
+                )
+                roomRef.set(roomData).await()
+                Log.d(tag, "Room created: $roomId")
             }
         } catch (e: Exception) {
-            Log.e(tag, "Error fetching new messages for room $roomId: ${e.message}")
-            throw e
+            logger(tag, "Error creating room: ${e.message}")
         }
     }
 }

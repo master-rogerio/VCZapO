@@ -14,11 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec.RawRes
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
+// Removido: Importações Lottie desnecessárias
 
 @Composable
 fun EmptyChatPlaceholder(
@@ -28,26 +24,14 @@ fun EmptyChatPlaceholder(
     modifier: Modifier = Modifier,
     color: Color
 ) {
-    val composition by rememberLottieComposition(RawRes(lottieAnimation))
-    val progress by animateLottieCompositionAsState(
-        composition = composition,
-        iterations = LottieConstants.IterateForever, speed = speed
-    )
-
     Box(
         modifier.padding(10.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy((-50).dp)
+            verticalArrangement = Arrangement.Center
         ) {
-            LottieAnimation(
-                composition = composition,
-                progress = { progress },
-                modifier = Modifier
-                    .size(500.dp)
-            )
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyLarge,

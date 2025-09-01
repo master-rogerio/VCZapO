@@ -15,14 +15,30 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+// ADICIONADO: Imports para suporte a quebra de linha e seleção de arquivos
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.EmojiEmotions
+// ADICIONADO: Import para o novo componente
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+// FIM ADICIONADO
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.AlertDialog
@@ -37,14 +53,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -57,57 +79,39 @@ fun MessageInput(
     onMessageChange: (String) -> Unit,
     onSend: () -> Unit,
     onImageClick: () -> Unit,
+    onVideoClick: () -> Unit,
+    // ADICIONADO: Parâmetro para seleção de arquivos genéricos
+    onFileClick: () -> Unit,
+    // ADICIONADO: Parâmetros para seleção de emojis e stickers separados
+    onEmojiClick: (String) -> Unit,
+    onStickerClick: (String) -> Unit,
+    // ADICIONADO: Callbacks para digitação
+    onUserStartedTyping: () -> Unit = {},
+    onUserStoppedTyping: () -> Unit = {},
+    // FIM ADICIONADO
     isRecording: Boolean,
     onRecordAudio: () -> Unit,
-    sendLocationMessage: (
-        latitude: Double,
-        longitude: Double,
-        senderName: String,
-        roomId: String,
-        currentUserId: String,
-        profileUrl: String,
-        recipientsToken: String,
-    ) -> Unit,
     roomId: String,
-    userData: NewUser?, recipientToken: String,
+    userData: NewUser?, 
+    recipientToken: String,
 ) {
-    val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(false) }
-    val locationPermission = Manifest.permission.ACCESS_FINE_LOCATION
-
-    val permissionRequest = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            getCurrentLocation(
-                context = context,
-                onLocationResult = { lat: Double?, lon: Double? ->
-                    if (lat != null && lon != null) {
-                        sendLocationMessage(
-                            lat,
-                            lon,
-                            userData?.username ?: "",
-                            roomId,
-                            userData?.userId ?: "",
-                            userData?.profileUrl ?: "",
-                            recipientToken
-                        )
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Unable to retrieve location",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                })
-        } else {
-            Toast.makeText(
-                context,
-                "Location permission denied",
-                Toast.LENGTH_SHORT
-            ).show()
+    // ADICIONADO: Estado para controlar o diálogo de seleção de mídia
+    var showMediaDialog by remember { mutableStateOf(false) }
+    // ADICIONADO: Estado para controlar o emoji picker
+    var showEmojiPicker by remember { mutableStateOf(false) }
+    // ADICIONADO: Estados para controlar digitação
+    var isTyping by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Para de digitar quando o texto fica vazio
+    LaunchedEffect(messageText) {
+        if (messageText.isBlank() && isTyping) {
+            isTyping = false
+            onUserStoppedTyping()
         }
     }
+    // FIM ADICIONADO
+    // REMOVIDO: Código de localização removido conforme solicitado
 //    Check if keyboard is shown
 //    val density = LocalDensity.current
 //    val isKeyboardVisible =
@@ -143,14 +147,62 @@ fun MessageInput(
     ) {
         BasicTextField(
             value = messageText,
-            onValueChange = onMessageChange,
+            onValueChange = { newText ->
+                onMessageChange(newText)
+                
+                // CORRIGIDO: Lógica de detecção de digitação melhorada
+                if (newText.isNotBlank()) {
+                    // Sempre chama onUserStartedTyping quando há texto
+                    // O ViewModel vai gerenciar se já está digitando ou não
+                    onUserStartedTyping()
+                    isTyping = true
+                } else if (isTyping) {
+                    // Para imediatamente quando o texto fica vazio
+                    isTyping = false
+                    onUserStoppedTyping()
+                }
+                // FIM ADICIONADO
+            },
+            // ALTERAÇÃO: Suporte a múltiplas linhas para quebras de linha
             maxLines = 5,
             singleLine = false,
+            // FIM ALTERAÇÃO
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences,
                 keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Send
             ),
-            modifier = Modifier.weight(1f),
+            // ALTERAÇÃO: Suporte ao envio com tecla Enter e quebra de linha com Shift+Enter
+            keyboardActions = KeyboardActions(
+                onSend = {
+                    if (messageText.isNotBlank()) {
+                        onSend()
+                    }
+                }
+            ),
+            // FIM ALTERAÇÃO
+            modifier = Modifier
+                .weight(1f)
+                // ADICIONADO: Suporte a Shift+Enter para quebra de linha
+                .onKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && 
+                        keyEvent.key == Key.Enter) {
+                        if (keyEvent.isShiftPressed) {
+                            // Shift+Enter: adiciona quebra de linha
+                            onMessageChange(messageText + "\n")
+                            true
+                        } else {
+                            // Enter simples: envia mensagem
+                            if (messageText.isNotBlank()) {
+                                onSend()
+                            }
+                            true
+                        }
+                    } else {
+                        false
+                    }
+                },
+                // FIM ADICIONADO
             textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onPrimaryContainer),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.onPrimaryContainer),
             decorationBox = { innerTextField ->
@@ -161,6 +213,7 @@ fun MessageInput(
                             shape = RoundedCornerShape(25.dp)
                         )
                         .fillMaxWidth()
+
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -169,38 +222,36 @@ fun MessageInput(
                             .fillMaxWidth()
                             .padding(vertical = 12.dp, horizontal = 15.dp)
                     ) {
-                        Row(modifier = Modifier.weight(1f)) {
+                        Row(modifier = Modifier.weight(2f)) {
                             Box {
                                 innerTextField()
-                                if (messageText.isBlank()) Text("Type a message")
+                                if (messageText.isBlank()) Text("Digite uma mensagem...")
                             }
                         }
-                        Row(
-                            modifier = Modifier,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AddLocationAlt,
-                                contentDescription = "More options",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        translationX = translate
-                                    }
-                                    .clickable(onClick = { showDialog = true })
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AddPhotoAlternate,
-                                contentDescription = "Add Photo",
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier
-                                    .graphicsLayer {
-                                        translationX = translateX
-                                        alpha = homeIconAlpha
-                                    }
-                                    .clickable(onClick = { onImageClick() })
-                            )
-                        }
+                        // ADICIONADO: Botão de emoji/sticker
+                        Icon(
+                            imageVector = Icons.Default.EmojiEmotions,
+                            contentDescription = "Selecionar Emoji",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = homeIconAlpha
+                                }
+                                .clickable(onClick = { showEmojiPicker = true })
+                                .padding(end = 8.dp)
+                        )
+                        // ALTERAÇÃO: Substituir múltiplos botões por um único botão de mídia
+                        Icon(
+                            imageVector = Icons.Default.AttachFile,
+                            contentDescription = "Selecionar Mídia",
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier
+                                .graphicsLayer {
+                                    alpha = homeIconAlpha
+                                }
+                                .clickable(onClick = { showMediaDialog = true })
+                        )
+                        // FIM ALTERAÇÃO
                     }
                 }
             }
@@ -239,54 +290,33 @@ fun MessageInput(
             }
         }
     }
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Share Location") },
-            text = { Text("You are about to share your location, do you want to continue?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDialog = false
-
-                    // Check if the permission is already granted
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            locationPermission
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        getCurrentLocation(context) { lat, lon ->
-                            if (lat != null && lon != null) {
-                                sendLocationMessage(
-                                    lat,
-                                    lon,
-                                    userData?.username ?: "",
-                                    roomId,
-                                    userData?.userId ?: "",
-                                    userData?.profileUrl ?: "",
-                                    recipientToken
-                                )
-                            } else {
-                                Toast.makeText(
-                                    context,
-                                    "Unable to retrieve location",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        }
-                    } else {
-                        permissionRequest.launch(locationPermission)
-                    }
-                }) {
-                    Text("Yes")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
-                    Text("No")
-                }
-            }
+    
+    // ADICIONADO: Diálogo de seleção de mídia
+    if (showMediaDialog) {
+        MediaSelectionDialog(
+            onDismiss = { showMediaDialog = false },
+            onImageClick = onImageClick,
+            onVideoClick = onVideoClick,
+            onFileClick = onFileClick,
+            onEmojiStickerClick = { showEmojiPicker = true }
         )
     }
+    
+    // ADICIONADO: Emoji/Sticker picker para envio de emojis e stickers como mensagens
+    if (showEmojiPicker) {
+        EmojiStickerPickerDialog(
+            onEmojiSelected = { selectedEmoji ->
+                onEmojiClick(selectedEmoji)
+                showEmojiPicker = false
+            },
+            onStickerSelected = { selectedSticker ->
+                onStickerClick(selectedSticker)
+                showEmojiPicker = false
+            },
+            onDismiss = { showEmojiPicker = false }
+        )
+    }
+    // FIM ADICIONADO
 }
 
 
@@ -298,17 +328,14 @@ fun PrevInputToolBar() {
         onImageClick = {},
         isRecording = false,
         onRecordAudio = {},
-        sendLocationMessage = {
-                latitude: Double,
-                longitude: Double,
-                senderName: String,
-                roomId: String,
-                currentUserId: String,
-                profileUrl: String,
-                recipientsToken: String,
-            ->
-            {}
-        },
+        onVideoClick = {},
+        // ADICIONADO: Parâmetros para preview
+        onFileClick = {},
+        onEmojiClick = {},
+        onStickerClick = {},
+        onUserStartedTyping = {},
+        onUserStoppedTyping = {},
+        // FIM ADICIONADO
         roomId = "",
         userData = NewUser(),
         recipientToken = ""

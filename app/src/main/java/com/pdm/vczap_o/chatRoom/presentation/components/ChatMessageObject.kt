@@ -2,27 +2,14 @@ package com.pdm.vczap_o.chatRoom.presentation.components
 
 import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.absoluteOffset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CopyAll
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.* // Alterado para importar todos os ícones default
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -32,10 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.AudioMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.ImageMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.LocationMessage
-import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.TextMessage
+import com.pdm.vczap_o.chatRoom.presentation.components.messageTypes.*
 import com.pdm.vczap_o.chatRoom.presentation.utils.vibrateDevice
 import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.data.mock.messageExample
@@ -63,8 +47,8 @@ fun ChatMessageObject(
 
     Row(
         modifier = modifier.padding(
-            end = if (!isFromMe && message.type == "image") 30.dp else 0.dp,
-            start = if (isFromMe && message.type == "image") 30.dp else 0.dp
+            end = if (!isFromMe && (message.type == "image" || message.type == "sticker")) 30.dp else 0.dp,
+            start = if (isFromMe && (message.type == "image" || message.type == "sticker")) 30.dp else 0.dp
         ), horizontalArrangement = if (isFromMe) Arrangement.End else Arrangement.Start
     ) {
 //        Action pop ups
@@ -110,23 +94,33 @@ fun ChatMessageObject(
         ) {
             Box(modifier = Modifier.absoluteOffset(x = 30.dp, y = 30.dp)) {
                 val myMessageOptionsList = listOf(
+                    DropMenu( // ADICIONADO
+                        text = "Fixar",
+                        onClick = { chatViewModel.pinMessage(message) },
+                        icon = Icons.Default.PushPin
+                    ),
                     DropMenu(
-                        text = "Copy",
+                        text = "Copiar",
                         onClick = { copyTextToClipboard(context, message.content) },
                         icon = Icons.Default.CopyAll
                     ),
                     DropMenu(
-                        text = "Edit", onClick = {
+                        text = "Editar", onClick = {
                             showEditDialog = true
                         }, icon = Icons.Default.Edit
                     ),
                     DropMenu(
-                        text = "Delete",
+                        text = "Apagar",
                         onClick = { showDeleteDialog = true },
                         icon = Icons.Default.Delete
                     ),
                 )
                 val othersMessageOptionsList = listOf(
+                    DropMenu( // ADICIONADO
+                        text = "Fixar",
+                        onClick = { chatViewModel.pinMessage(message) },
+                        icon = Icons.Default.PushPin
+                    ),
                     DropMenu(
                         text = "Copy",
                         onClick = { copyTextToClipboard(context, message.content) },
@@ -158,6 +152,10 @@ fun ChatMessageObject(
                                         "a location"
                                     }
 
+                                    "sticker" -> {
+                                        "a sticker 🎭"
+                                    }
+
                                     else -> "\"${message.content}\""
                                 }
                             )
@@ -168,10 +166,10 @@ fun ChatMessageObject(
 //            different rendering for different message types
             Column(
                 modifier = Modifier.padding(
-                    start = if (message.type == "text") 8.dp else 0.dp,
+                    start = if (message.type == "text") 15.dp else 0.dp,
                     end = if (message.type == "text") 30.dp else 0.dp,
-                    top = if (message.type == "text") 2.dp else 0.dp,
-                    bottom = 0.dp
+                    top = if (message.type == "text") 5.dp else 0.dp,
+                    bottom = if (message.type == "sticker") 0.dp else 0.dp
                 ), verticalArrangement = Arrangement.spacedBy((-5).dp)
             ) {
                 when (message.type) {
@@ -205,6 +203,38 @@ fun ChatMessageObject(
                         )
                     }
 
+                    "video" -> {
+                        VideoMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            fontSize = fontSize,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
+                    "file" -> {
+                        FileMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            fontSize = fontSize,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
+                    "sticker" -> {
+                        StickerMessage(
+                            message = message,
+                            isFromMe = isFromMe,
+                            showPopUp = {
+                                showPopup = !showPopup
+                            }
+                        )
+                    }
+
                     else -> {
                         TextMessage(message = message, isFromMe = isFromMe)
                     }
@@ -213,7 +243,7 @@ fun ChatMessageObject(
                 Row(
                     modifier = Modifier
                         .align(Alignment.End)
-                        .absoluteOffset(x = if (message.type == "text") 22.dp else 0.dp)
+                        .absoluteOffset(x = if (message.type == "text") 22.dp else if (message.type == "sticker") (-10).dp else 0.dp)
                 ) {
                     Text(
                         text = formatMessageTime(message.createdAt),

@@ -1,0 +1,913 @@
+Index: app/src/main/java/com/pdm/vczap_o/auth/data/AuthRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.auth.data\r\n\r\nimport com.pdm.vczap_o.core.model.NewUser\r\nimport com.google.firebase.auth.FirebaseAuth\r\nimport com.google.firebase.firestore.FirebaseFirestore\r\nimport kotlinx.coroutines.tasks.await\r\nimport javax.inject.Inject\r\n\r\nclass AuthRepository @Inject constructor(\r\n    private val auth: FirebaseAuth,\r\n    private val firebase: FirebaseFirestore,\r\n) {\r\n    suspend fun createAuthUser(email: String, password: String): Result<String> {\r\n        return try {\r\n            val result = auth.createUserWithEmailAndPassword(email, password).await()\r\n            Result.success(result.user?.uid ?: \"\")\r\n        } catch (e: Exception) {\r\n            Result.failure(e)\r\n        }\r\n    }\r\n\r\n    suspend fun saveUserProfile(newUser: NewUser): Result<Unit> {\r\n        return try {\r\n            firebase.collection(\"users\")\r\n                .document(newUser.userId)\r\n                .set(newUser)\r\n                .await()\r\n            Result.success(Unit)\r\n        } catch (e: Exception) {\r\n            Result.failure(e)\r\n        }\r\n    }\r\n\r\n    suspend fun updateUserDocument(newData: Map<String, Any>): Result<String> {\r\n        return try {\r\n            val userId = auth.currentUser?.uid ?: throw Exception(\"User not authenticated\")\r\n            firebase.collection(\"users\")\r\n                .document(userId)\r\n                .update(newData)\r\n                .await()\r\n            Result.success(\"Profile updated successfully!\")\r\n        } catch (e: Exception) {\r\n            Result.failure(e)\r\n        }\r\n    }\r\n\r\n    suspend fun login(email: String, password: String): Result<String> {\r\n        return try {\r\n            auth.signInWithEmailAndPassword(email, password).await()\r\n            Result.success(\"Login successful!\")\r\n        } catch (e: Exception) {\r\n            Result.failure(e)\r\n        }\r\n    }\r\n\r\n    suspend fun resetPassword(email: String): Result<String> {\r\n        return try {\r\n            auth.sendPasswordResetEmail(email).await()\r\n            Result.success(\"Reset link has been sent to your email\")\r\n        } catch (e: Exception) {\r\n            var msg = e.message ?: \"An error occurred\"\r\n            if (msg.contains(\"auth/invalid-email\")) msg = \"Invalid Email\"\r\n            else if (msg.contains(\"auth/invalid-credential\")) msg = \"Invalid Credentials\"\r\n            else if (msg.contains(\"auth/network-request-failed\")) msg = \"No internet connection\"\r\n            Result.failure(Exception(msg))\r\n        }\r\n    }\r\n\r\n    fun isUserLoggedIn(): Boolean {\r\n        return auth.currentUser != null\r\n    }\r\n\r\n    fun getUserId(): String? {\r\n        return auth.currentUser?.uid\r\n    }\r\n\r\n    fun logout() {\r\n        auth.signOut()\r\n    }\r\n\r\n//cripto\r\n    suspend fun publishUserKeys(userId: String, identityKey: String, registrationId: Int, preKeys: List<Map<String, Any>>, signedPreKey: Map<String, Any>) {\r\n        val userKeys = hashMapOf(\r\n            \"identityKey\" to identityKey,\r\n            \"registrationId\" to registrationId,\r\n            \"preKeys\" to preKeys,\r\n            \"signedPreKey\" to signedPreKey\r\n        )\r\n        //Trocado firestore por firebase\r\n        firebase.collection(\"users\").document(userId).collection(\"keys\").document(\"publicKeys\")\r\n            .set(userKeys)\r\n            .await()\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/auth/data/AuthRepository.kt b/app/src/main/java/com/pdm/vczap_o/auth/data/AuthRepository.kt
+--- a/app/src/main/java/com/pdm/vczap_o/auth/data/AuthRepository.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/auth/data/AuthRepository.kt	(date 1756239283942)
+@@ -80,15 +80,36 @@
+ 
+ //cripto
+     suspend fun publishUserKeys(userId: String, identityKey: String, registrationId: Int, preKeys: List<Map<String, Any>>, signedPreKey: Map<String, Any>) {
+-        val userKeys = hashMapOf(
+-            "identityKey" to identityKey,
+-            "registrationId" to registrationId,
+-            "preKeys" to preKeys,
+-            "signedPreKey" to signedPreKey
+-        )
+-        //Trocado firestore por firebase
+-        firebase.collection("users").document(userId).collection("keys").document("publicKeys")
+-            .set(userKeys)
+-            .await()
++        try {
++            android.util.Log.d("AuthRepository", "📤 INICIANDO publicação de chaves para userId: $userId")
++            
++            val userKeys = hashMapOf(
++                "identityKey" to identityKey,
++                "registrationId" to registrationId,
++                "preKeys" to preKeys,
++                "signedPreKey" to signedPreKey
++            )
++            
++            android.util.Log.d("AuthRepository", "🔑 Dados das chaves preparados:")
++            android.util.Log.d("AuthRepository", "   - RegistrationId: $registrationId")
++            android.util.Log.d("AuthRepository", "   - IdentityKey length: ${identityKey.length}")
++            android.util.Log.d("AuthRepository", "   - PreKeys count: ${preKeys.size}")
++            android.util.Log.d("AuthRepository", "   - SignedPreKey ID: ${signedPreKey["keyId"]}")
++            
++            val docPath = "users/$userId/keys/publicKeys"
++            android.util.Log.d("AuthRepository", "📍 Salvando em: $docPath")
++            
++            //Trocado firestore por firebase
++            firebase.collection("users").document(userId).collection("keys").document("publicKeys")
++                .set(userKeys)
++                .await()
++                
++            android.util.Log.d("AuthRepository", "✅ SUCESSO: Chaves publicadas no Firebase!")
++            
++        } catch (e: Exception) {
++            android.util.Log.e("AuthRepository", "💥 ERRO ao publicar chaves: ${e.message}")
++            android.util.Log.e("AuthRepository", "📍 Stack trace: ${e.stackTrace.contentToString()}")
++            throw e
++        }
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/pdm/vczap_o/auth/presentation/viewmodels/AuthViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.auth.presentation.viewmodels\r\n\r\nimport android.app.Application\r\nimport android.content.Context\r\nimport android.util.Base64\r\nimport androidx.lifecycle.ViewModel\r\nimport androidx.lifecycle.viewModelScope\r\nimport com.pdm.vczap_o.auth.data.AuthRepository\r\nimport com.pdm.vczap_o.auth.domain.GetUserDataUseCase\r\nimport com.pdm.vczap_o.auth.domain.GetUserIdUseCase\r\nimport com.pdm.vczap_o.auth.domain.IsUserLoggedInUseCase\r\nimport com.pdm.vczap_o.auth.domain.LoginUseCase\r\nimport com.pdm.vczap_o.auth.domain.LogoutUseCase\r\nimport com.pdm.vczap_o.auth.domain.ResetPasswordUseCase\r\nimport com.pdm.vczap_o.auth.domain.SignUpUseCase\r\nimport com.pdm.vczap_o.auth.domain.UpdateUserDocumentUseCase\r\nimport com.pdm.vczap_o.core.state.CurrentUser\r\nimport com.pdm.vczap_o.cripto.SignalProtocolManager\r\nimport com.pdm.vczap_o.home.data.RoomsCache\r\nimport dagger.hilt.android.lifecycle.HiltViewModel\r\nimport kotlinx.coroutines.flow.MutableStateFlow\r\nimport kotlinx.coroutines.flow.StateFlow\r\nimport kotlinx.coroutines.launch\r\nimport javax.inject.Inject\r\n\r\n@HiltViewModel\r\nclass AuthViewModel @Inject constructor(\r\n    private val signUpUseCase: SignUpUseCase,\r\n    private val loginUseCase: LoginUseCase,\r\n    private val resetPasswordUseCase: ResetPasswordUseCase,\r\n    private val updateUserDocumentUseCase: UpdateUserDocumentUseCase,\r\n    isUserLoggedInUseCase: IsUserLoggedInUseCase,\r\n    private val getUserIdUseCase: GetUserIdUseCase,\r\n    private val logoutUseCase: LogoutUseCase,\r\n    private val getUserDataUseCase: GetUserDataUseCase,\r\n    private val authRepository: AuthRepository, // Dependência para criptografia\r\n    private val application: Application,      // Dependência para criptografia\r\n    context: Context,\r\n) : ViewModel() {\r\n    private val cacheHelper = RoomsCache(context = context)\r\n    private val _authState = MutableStateFlow(isUserLoggedInUseCase())\r\n    private val _isLoggingIn = MutableStateFlow(false)\r\n    private val _message = MutableStateFlow<String?>(null)\r\n    val authState: StateFlow<Boolean> = _authState\r\n    val isLoggingIn: StateFlow<Boolean> = _isLoggingIn\r\n    val message: StateFlow<String?> = _message\r\n\r\n    fun signUp(email: String, password: String) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = signUpUseCase(email, password)\r\n            result.onSuccess {\r\n                _authState.value = true\r\n                _message.value = it\r\n                _isLoggingIn.value = false\r\n                // Gera e publica as chaves de segurança após o sucesso\r\n                generateAndPublishKeys()\r\n            }.onFailure {\r\n                _isLoggingIn.value = false\r\n                _message.value = it.message\r\n            }\r\n        }\r\n    }\r\n\r\n    fun updateUserDocument(newData: Map<String, Any>) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = updateUserDocumentUseCase(newData)\r\n            result.onSuccess {\r\n                _message.value = it\r\n            }.onFailure {\r\n                _message.value = it.message\r\n            }\r\n            _isLoggingIn.value = false\r\n        }\r\n    }\r\n\r\n    fun loadUserData() {\r\n        viewModelScope.launch {\r\n            val userId = getUserIdUseCase()\r\n            if (userId == null) {\r\n                _message.value = \"User not authenticated\"\r\n                return@launch\r\n            }\r\n            val result = getUserDataUseCase(userId)\r\n            result.onSuccess { user ->\r\n                user?.let {\r\n                    CurrentUser.updateUser(it)\r\n                } ?: run {\r\n                    _message.value = \"User data not found\"\r\n                }\r\n            }.onFailure { error ->\r\n                _message.value = \"Failed to load user data: ${error.message}\"\r\n            }\r\n        }\r\n    }\r\n\r\n    fun login(email: String, password: String) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = loginUseCase(email, password)\r\n            result.onSuccess {\r\n                _authState.value = true\r\n                _message.value = it\r\n                _isLoggingIn.value = false\r\n                // Gera e publica as chaves de segurança após o sucesso\r\n                generateAndPublishKeys()\r\n            }.onFailure {\r\n                _message.value = it.message\r\n                _isLoggingIn.value = false\r\n            }\r\n        }\r\n    }\r\n\r\n    fun resetPassword(email: String) {\r\n        viewModelScope.launch {\r\n            val result = resetPasswordUseCase(email)\r\n            result.onSuccess {\r\n                _message.value = it\r\n            }.onFailure {\r\n                _message.value = it.message\r\n            }\r\n        }\r\n    }\r\n\r\n    fun logout() {\r\n        logoutUseCase()\r\n        _authState.value = false\r\n        cacheHelper.clearRooms()\r\n    }\r\n\r\n    fun clearMessage() {\r\n        _message.value = null\r\n    }\r\n\r\n    // --- LÓGICA DE CRIPTOGRAFIA INTEGRADA ---\r\n    private fun generateAndPublishKeys() {\r\n        viewModelScope.launch {\r\n            try {\r\n                val userId = getUserIdUseCase() ?: return@launch\r\n                val signalManager = SignalProtocolManager(application, userId)\r\n\r\n                // Só inicializa e publica as chaves se elas AINDA NÃO existirem\r\n                if (!signalManager.isInitialized()) {\r\n                    signalManager.initializeKeys()\r\n\r\n                    // Formata as chaves para salvar no Firestore\r\n                    val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP)\r\n                    val registrationId = signalManager.getRegistrationId()\r\n                    val preKeys = signalManager.getPreKeysForPublication().map {\r\n                        mapOf(\"keyId\" to it.id, \"publicKey\" to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP))\r\n                    }\r\n                    val signedPreKeyRecord = signalManager.getSignedPreKeyForPublication()\r\n                    val signedPreKey = mapOf(\r\n                        \"keyId\" to signedPreKeyRecord.id,\r\n                        \"publicKey\" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),\r\n                        \"signature\" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)\r\n                    )\r\n\r\n                    // Chama a função do repositório para publicar as chaves\r\n                    authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey)\r\n                }\r\n            } catch (e: Exception) {\r\n                _message.value = \"Falha ao configurar chaves de segurança: ${e.message}\"\r\n            }\r\n        }\r\n    }\r\n}\r\n\r\n/*\r\nimport android.content.Context\r\nimport androidx.lifecycle.ViewModel\r\nimport androidx.lifecycle.viewModelScope\r\nimport com.pdm.vczap_o.auth.domain.GetUserDataUseCase\r\nimport com.pdm.vczap_o.auth.domain.GetUserIdUseCase\r\nimport com.pdm.vczap_o.auth.domain.IsUserLoggedInUseCase\r\nimport com.pdm.vczap_o.auth.domain.LoginUseCase\r\nimport com.pdm.vczap_o.auth.domain.LogoutUseCase\r\nimport com.pdm.vczap_o.auth.domain.ResetPasswordUseCase\r\nimport com.pdm.vczap_o.auth.domain.SignUpUseCase\r\nimport com.pdm.vczap_o.auth.domain.UpdateUserDocumentUseCase\r\nimport com.pdm.vczap_o.core.state.CurrentUser\r\nimport com.pdm.vczap_o.home.data.RoomsCache\r\nimport dagger.hilt.android.lifecycle.HiltViewModel\r\nimport kotlinx.coroutines.flow.MutableStateFlow\r\nimport kotlinx.coroutines.flow.StateFlow\r\nimport kotlinx.coroutines.launch\r\nimport javax.inject.Inject\r\n\r\n@HiltViewModel\r\nclass AuthViewModel @Inject constructor(\r\n    private val signUpUseCase: SignUpUseCase,\r\n    private val loginUseCase: LoginUseCase,\r\n    private val resetPasswordUseCase: ResetPasswordUseCase,\r\n    private val updateUserDocumentUseCase: UpdateUserDocumentUseCase,\r\n    isUserLoggedInUseCase: IsUserLoggedInUseCase,\r\n    private val getUserIdUseCase: GetUserIdUseCase,\r\n    private val logoutUseCase: LogoutUseCase,\r\n    private val getUserDataUseCase: GetUserDataUseCase,\r\n    context: Context,\r\n) : ViewModel() {\r\n    //    private val tag = \"AuthViewModel\"\r\n    private val cacheHelper = RoomsCache(context = context)\r\n    private val _authState = MutableStateFlow(isUserLoggedInUseCase())\r\n    private val _isLoggingIn = MutableStateFlow(false)\r\n    private val _message = MutableStateFlow<String?>(null)\r\n    val authState: StateFlow<Boolean> = _authState\r\n    val isLoggingIn: StateFlow<Boolean> = _isLoggingIn\r\n    val message: StateFlow<String?> = _message\r\n\r\n    fun signUp(email: String, password: String) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = signUpUseCase(email, password)\r\n            result.onSuccess {\r\n                _authState.value = true\r\n                _message.value = it\r\n                _isLoggingIn.value = false\r\n            }.onFailure {\r\n                _isLoggingIn.value = false\r\n                _message.value = it.message\r\n            }\r\n        }\r\n    }\r\n\r\n    fun updateUserDocument(newData: Map<String, Any>) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = updateUserDocumentUseCase(newData)\r\n            result.onSuccess {\r\n                _message.value = it\r\n            }.onFailure {\r\n                _message.value = it.message\r\n            }\r\n            _isLoggingIn.value = false\r\n        }\r\n    }\r\n\r\n    fun loadUserData() {\r\n        viewModelScope.launch {\r\n            val userId = getUserIdUseCase()\r\n            if (userId == null) {\r\n                _message.value = \"User not authenticated\"\r\n                return@launch\r\n            }\r\n            val result = getUserDataUseCase(userId)\r\n            result.onSuccess { user ->\r\n                user?.let {\r\n                    CurrentUser.updateUser(it)\r\n                } ?: run {\r\n                    _message.value = \"User data not found\"\r\n                }\r\n            }.onFailure { error ->\r\n                _message.value = \"Failed to load user data: ${error.message}\"\r\n            }\r\n        }\r\n    }\r\n\r\n\r\n    fun login(email: String, password: String) {\r\n        _isLoggingIn.value = true\r\n        viewModelScope.launch {\r\n            val result = loginUseCase(email, password)\r\n            result.onSuccess {\r\n                _authState.value = true\r\n                _message.value = it\r\n                _isLoggingIn.value = false\r\n            }.onFailure {\r\n                _message.value = it.message\r\n                _isLoggingIn.value = false\r\n            }\r\n        }\r\n    }\r\n\r\n    fun resetPassword(email: String) {\r\n        viewModelScope.launch {\r\n            val result = resetPasswordUseCase(email)\r\n            result.onSuccess {\r\n                _message.value = it\r\n            }.onFailure {\r\n                _message.value = it.message\r\n            }\r\n        }\r\n    }\r\n\r\n    fun logout() {\r\n        logoutUseCase()\r\n        _authState.value = false\r\n        cacheHelper.clearRooms()\r\n    }\r\n\r\n    fun clearMessage() {\r\n        _message.value = null\r\n    }\r\n}\r\n*/\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/auth/presentation/viewmodels/AuthViewModel.kt b/app/src/main/java/com/pdm/vczap_o/auth/presentation/viewmodels/AuthViewModel.kt
+--- a/app/src/main/java/com/pdm/vczap_o/auth/presentation/viewmodels/AuthViewModel.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/auth/presentation/viewmodels/AuthViewModel.kt	(date 1756245061010)
+@@ -3,6 +3,7 @@
+ import android.app.Application
+ import android.content.Context
+ import android.util.Base64
++import android.util.Log
+ import androidx.lifecycle.ViewModel
+ import androidx.lifecycle.viewModelScope
+ import com.pdm.vczap_o.auth.data.AuthRepository
+@@ -16,6 +17,7 @@
+ import com.pdm.vczap_o.auth.domain.UpdateUserDocumentUseCase
+ import com.pdm.vczap_o.core.state.CurrentUser
+ import com.pdm.vczap_o.cripto.SignalProtocolManager
++import com.pdm.vczap_o.di.CriptoSessionManager
+ import com.pdm.vczap_o.home.data.RoomsCache
+ import dagger.hilt.android.lifecycle.HiltViewModel
+ import kotlinx.coroutines.flow.MutableStateFlow
+@@ -35,6 +37,7 @@
+     private val getUserDataUseCase: GetUserDataUseCase,
+     private val authRepository: AuthRepository, // Dependência para criptografia
+     private val application: Application,      // Dependência para criptografia
++    private val criptoSessionManager: CriptoSessionManager,
+     context: Context,
+ ) : ViewModel() {
+     private val cacheHelper = RoomsCache(context = context)
+@@ -50,6 +53,12 @@
+         viewModelScope.launch {
+             val result = signUpUseCase(email, password)
+             result.onSuccess {
++                val userId = getUserIdUseCase()
++
++                if(userId!!.isNotBlank()){
++                criptoSessionManager.startUserSession(userId)
++
++                }
+                 _authState.value = true
+                 _message.value = it
+                 _isLoggingIn.value = false
+@@ -95,22 +104,52 @@
+         }
+     }
+ 
+-    fun login(email: String, password: String) {
+-        _isLoggingIn.value = true
+-        viewModelScope.launch {
+-            val result = loginUseCase(email, password)
+-            result.onSuccess {
++//    fun login(email: String, password: String) {
++//        _isLoggingIn.value = true
++//        viewModelScope.launch {
++//            val result = loginUseCase(email, password)
++//            result.onSuccess {
++//                _authState.value = true
++//                _message.value = it
++//                _isLoggingIn.value = false
++//                // Gera e publica as chaves de segurança após o sucesso
++//                generateAndPublishKeys()
++//            }.onFailure {
++//                _message.value = it.message
++//                _isLoggingIn.value = false
++//            }
++//        }
++//    }
++fun login(email: String, password: String) {
++    _isLoggingIn.value = true
++    viewModelScope.launch {
++        val result = loginUseCase(email, password)
++        result.onSuccess { successMessage ->
++            // ▼▼▼ ESTA É A CORREÇÃO PRINCIPAL ▼▼▼
++
++            // 1. Após o login ter sucesso, nós imediatamente pegamos o ID do usuário.
++            val userId = getUserIdUseCase()
++
++            if(userId!!.isNotBlank()){
++                criptoSessionManager.startUserSession(userId)
++
+                 _authState.value = true
+-                _message.value = it
++                _message.value = successMessage
+                 _isLoggingIn.value = false
+-                // Gera e publica as chaves de segurança após o sucesso
+-                generateAndPublishKeys()
+-            }.onFailure {
+-                _message.value = it.message
+-                _isLoggingIn.value = false
+-            }
+-        }
+-    }
++
++            }else{
++                _message.value = "Não foi possível obter o ID do usuário após o login."
++                _isLoggingIn.value = false
++            }
++
++            // 3. Agora, com as chaves carregadas, o resto do fluxo pode continuar.
++
++        }.onFailure {
++            _message.value = it.message
++            _isLoggingIn.value = false
++        }
++    }
++}
+ 
+     fun resetPassword(email: String) {
+         viewModelScope.launch {
+@@ -137,14 +176,25 @@
+     private fun generateAndPublishKeys() {
+         viewModelScope.launch {
+             try {
+-                val userId = getUserIdUseCase() ?: return@launch
++                Log.d("AuthViewModel", "🔐 INICIANDO geração e publicação de chaves")
++                val userId = getUserIdUseCase()
++                if (userId == null) {
++                    Log.e("AuthViewModel", "❌ ERRO: UserId é null")
++                    return@launch
++                }
++                Log.d("AuthViewModel", "✅ UserId obtido: $userId")
++
+                 val signalManager = SignalProtocolManager(application, userId)
++                Log.d("AuthViewModel", "🔧 SignalProtocolManager criado")
+ 
+                 // Só inicializa e publica as chaves se elas AINDA NÃO existirem
+                 if (!signalManager.isInitialized()) {
++                    Log.d("AuthViewModel", "🆕 Chaves não inicializadas. Gerando novas chaves...")
+                     signalManager.initializeKeys()
++                    Log.d("AuthViewModel", "✅ Chaves inicializadas localmente")
+ 
+                     // Formata as chaves para salvar no Firestore
++                    Log.d("AuthViewModel", "📝 Formatando chaves para Firestore...")
+                     val identityKey = Base64.encodeToString(signalManager.getIdentityPublicKey(), Base64.NO_WRAP)
+                     val registrationId = signalManager.getRegistrationId()
+                     val preKeys = signalManager.getPreKeysForPublication().map {
+@@ -157,10 +207,20 @@
+                         "signature" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)
+                     )
+ 
++                    Log.d("AuthViewModel", "📤 Publicando chaves no Firebase...")
++                    Log.d("AuthViewModel", "🔑 RegistrationId: $registrationId")
++                    Log.d("AuthViewModel", "🔑 PreKeys count: ${preKeys.size}")
++                    Log.d("AuthViewModel", "🔑 SignedPreKey ID: ${signedPreKey["keyId"]}")
++
+                     // Chama a função do repositório para publicar as chaves
+                     authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey)
++                    Log.d("AuthViewModel", "🎉 SUCESSO: Chaves publicadas no Firebase!")
++                } else {
++                    Log.d("AuthViewModel", "✅ Chaves já inicializadas. Pulando geração.")
+                 }
+             } catch (e: Exception) {
++                Log.e("AuthViewModel", "💥 ERRO ao gerar/publicar chaves: ${e.message}")
++                Log.e("AuthViewModel", "📍 Stack trace: ${e.stackTrace.contentToString()}")
+                 _message.value = "Falha ao configurar chaves de segurança: ${e.message}"
+             }
+         }
+Index: app/src/main/java/com/pdm/vczap_o/di/AppModule.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.di\r\n\r\nimport android.content.Context\r\nimport androidx.datastore.core.DataStore\r\nimport androidx.datastore.preferences.core.Preferences\r\nimport com.pdm.vczap_o.chatRoom.data.local.ChatDatabase\r\nimport com.pdm.vczap_o.chatRoom.data.local.MessageDao\r\nimport com.pdm.vczap_o.core.data.dataStore\r\nimport com.google.firebase.auth.FirebaseAuth\r\nimport com.google.firebase.firestore.FirebaseFirestore\r\nimport com.google.firebase.storage.FirebaseStorage\r\nimport dagger.Module\r\nimport dagger.Provides\r\nimport dagger.hilt.InstallIn\r\nimport dagger.hilt.android.qualifiers.ApplicationContext\r\nimport dagger.hilt.components.SingletonComponent\r\nimport javax.inject.Singleton\r\n\r\n@Module\r\n@InstallIn(SingletonComponent::class)\r\nobject AppModule {\r\n    @Provides\r\n    @Singleton\r\n    fun provideFirebaseAuth(): FirebaseAuth {\r\n        return FirebaseAuth.getInstance()\r\n    }\r\n\r\n    @Provides\r\n    @Singleton\r\n    fun provideFirebaseFirestore(): FirebaseFirestore {\r\n        return FirebaseFirestore.getInstance()\r\n    }\r\n\r\n    @Provides\r\n    @Singleton\r\n    fun provideFirebaseStorage(): FirebaseStorage {\r\n        return FirebaseStorage.getInstance()\r\n    }\r\n\r\n    @Provides\r\n    @Singleton\r\n    fun provideContext(@ApplicationContext appContext: Context): Context {\r\n        return appContext\r\n    }\r\n\r\n    @Provides\r\n    @Singleton\r\n    fun provideMessageDao(@ApplicationContext appContext: Context): MessageDao {\r\n        return ChatDatabase.getDatabase(appContext).messageDao()\r\n    }\r\n\r\n    @Provides\r\n    @Singleton\r\n    fun provideDataStore(@ApplicationContext appContext: Context): DataStore<Preferences> {\r\n        return appContext.applicationContext.dataStore\r\n\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/di/AppModule.kt b/app/src/main/java/com/pdm/vczap_o/di/AppModule.kt
+--- a/app/src/main/java/com/pdm/vczap_o/di/AppModule.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/di/AppModule.kt	(date 1756244528885)
+@@ -9,6 +9,7 @@
+ import com.google.firebase.auth.FirebaseAuth
+ import com.google.firebase.firestore.FirebaseFirestore
+ import com.google.firebase.storage.FirebaseStorage
++import com.pdm.vczap_o.cripto.SignalProtocolManager
+ import dagger.Module
+ import dagger.Provides
+ import dagger.hilt.InstallIn
+@@ -55,4 +56,11 @@
+         return appContext.applicationContext.dataStore
+ 
+     }
++
++    @Provides
++    fun provideSignalProtocolManager(
++        sessionManager: CriptoSessionManager
++    ) : SignalProtocolManager {
++        return sessionManager.userManager?: throw IllegalStateException("SignalProtocolManager foi solicitado, mas a sessão de usuário não foi iniciada.")
++    }
+ }
+\ No newline at end of file
+Index: app/src/main/res/values/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><resources>\r\n    <string name=\"app_name\">V.C Quiz-o</string>\r\n</resources>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+--- a/app/src/main/res/values/strings.xml	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/res/values/strings.xml	(date 1756241873918)
+@@ -1,3 +1,3 @@
+ <resources>
+-    <string name="app_name">V.C Quiz-o</string>
++    <string name="app_name">V.C. Zap-O-o</string>
+ </resources>
+\ No newline at end of file
+Index: app/src/main/java/com/pdm/vczap_o/chatRoom/domain/SendTextMessageUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.chatRoom.domain\r\n\r\nimport com.pdm.vczap_o.chatRoom.data.repository.SendMessageRepository\r\nimport javax.inject.Inject\r\n\r\nclass SendTextMessageUseCase @Inject constructor(\r\n    private val sendMessageRepository: SendMessageRepository,\r\n    private val notificationUseCase: SendNotificationUseCase,\r\n) {\r\n    suspend operator fun invoke(\r\n        roomId: String,\r\n        content: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        recipientsToken: String,\r\n        otherUserId: String,\r\n        profileUrl: String,\r\n    ) {\r\n        // ▼▼▼ CORREÇÃO APLICADA AQUI ▼▼▼\r\n        // Adicionamos o parâmetro 'otherUserId' que estava faltando na chamada.\r\n        sendMessageRepository.sendTextMessage(\r\n            roomId = roomId,\r\n            content = content,\r\n            senderId = senderId,\r\n            senderName = senderName,\r\n            otherUserId = otherUserId\r\n        )\r\n\r\n        notificationUseCase(\r\n            recipientsToken = recipientsToken,\r\n            title = senderName,\r\n            body = content,\r\n            roomId = roomId,\r\n            recipientsUserId = otherUserId,\r\n            sendersUserId = senderId,\r\n            profileUrl = profileUrl\r\n        )\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/chatRoom/domain/SendTextMessageUseCase.kt b/app/src/main/java/com/pdm/vczap_o/chatRoom/domain/SendTextMessageUseCase.kt
+--- a/app/src/main/java/com/pdm/vczap_o/chatRoom/domain/SendTextMessageUseCase.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/chatRoom/domain/SendTextMessageUseCase.kt	(date 1756240050949)
+@@ -1,5 +1,6 @@
+ package com.pdm.vczap_o.chatRoom.domain
+ 
++import android.util.Log
+ import com.pdm.vczap_o.chatRoom.data.repository.SendMessageRepository
+ import javax.inject.Inject
+ 
+@@ -16,24 +17,45 @@
+         otherUserId: String,
+         profileUrl: String,
+     ) {
+-        // ▼▼▼ CORREÇÃO APLICADA AQUI ▼▼▼
+-        // Adicionamos o parâmetro 'otherUserId' que estava faltando na chamada.
+-        sendMessageRepository.sendTextMessage(
+-            roomId = roomId,
+-            content = content,
+-            senderId = senderId,
+-            senderName = senderName,
+-            otherUserId = otherUserId
+-        )
++        try {
++            Log.d("SendTextMessageUseCase", "🎯 INICIANDO SendTextMessageUseCase")
++            Log.d("SendTextMessageUseCase", "📝 Parâmetros recebidos:")
++            Log.d("SendTextMessageUseCase", "   - roomId: $roomId")
++            Log.d("SendTextMessageUseCase", "   - content: '$content'")
++            Log.d("SendTextMessageUseCase", "   - senderId: $senderId")
++            Log.d("SendTextMessageUseCase", "   - senderName: $senderName")
++            Log.d("SendTextMessageUseCase", "   - otherUserId: $otherUserId")
++            Log.d("SendTextMessageUseCase", "   - recipientsToken: ${recipientsToken.take(10)}...")
++
++            Log.d("SendTextMessageUseCase", "📤 Chamando sendMessageRepository.sendTextMessage...")
++            
++            sendMessageRepository.sendTextMessage(
++                roomId = roomId,
++                content = content,
++                senderId = senderId,
++                senderName = senderName,
++                otherUserId = otherUserId
++            )
++            
++            Log.d("SendTextMessageUseCase", "✅ sendTextMessage concluído com sucesso!")
++            Log.d("SendTextMessageUseCase", "🔔 Enviando notificação...")
+ 
+-        notificationUseCase(
+-            recipientsToken = recipientsToken,
+-            title = senderName,
+-            body = content,
+-            roomId = roomId,
+-            recipientsUserId = otherUserId,
+-            sendersUserId = senderId,
+-            profileUrl = profileUrl
+-        )
++            notificationUseCase(
++                recipientsToken = recipientsToken,
++                title = senderName,
++                body = content,
++                roomId = roomId,
++                recipientsUserId = otherUserId,
++                sendersUserId = senderId,
++                profileUrl = profileUrl
++            )
++            
++            Log.d("SendTextMessageUseCase", "🎉 SUCESSO TOTAL: Mensagem e notificação enviadas!")
++            
++        } catch (e: Exception) {
++            Log.e("SendTextMessageUseCase", "💥 ERRO no SendTextMessageUseCase: ${e.message}")
++            Log.e("SendTextMessageUseCase", "📍 Stack trace: ${e.stackTrace.contentToString()}")
++            throw e
++        }
+     }
+ }
+\ No newline at end of file
+Index: app/src/main/java/com/pdm/vczap_o/chatRoom/presentation/viewmodels/ChatViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.chatRoom.presentation.viewmodels\r\n\r\nimport android.content.Context\r\nimport android.net.Uri\r\nimport android.util.Log\r\nimport androidx.compose.runtime.mutableStateListOf\r\nimport androidx.lifecycle.ViewModel\r\nimport androidx.lifecycle.viewModelScope\r\nimport com.pdm.vczap_o.chatRoom.domain.AddMessageListenerUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.AddReactionUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.AudioRecordingUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.GetMessagesUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.InitializeChatUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.MarkMessagesAsReadUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.PrefetchMessagesUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.RemoveMessageListenerUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.SendImageMessageUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.SendLocationMessageUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.SendTextMessageUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.UpdateMessageUseCase\r\nimport com.pdm.vczap_o.chatRoom.domain.UploadImageUseCase\r\nimport com.pdm.vczap_o.core.domain.logger\r\nimport com.pdm.vczap_o.core.model.ChatMessage\r\nimport dagger.hilt.android.lifecycle.HiltViewModel\r\nimport kotlinx.coroutines.flow.MutableStateFlow\r\nimport kotlinx.coroutines.flow.StateFlow\r\nimport kotlinx.coroutines.launch\r\nimport javax.inject.Inject\r\n\r\nsealed class ChatState {\r\n    object Loading : ChatState()\r\n    data class Success(val messages: List<ChatMessage>) : ChatState()\r\n    data class Error(val message: String) : ChatState()\r\n}\r\n\r\n@HiltViewModel\r\nclass ChatViewModel @Inject constructor(\r\n    private val getMessagesUseCase: GetMessagesUseCase,\r\n    private val initializeChatUseCase: InitializeChatUseCase,\r\n    private val addMessageListenerUseCase: AddMessageListenerUseCase,\r\n    private val removeMessageListenerUseCase: RemoveMessageListenerUseCase,\r\n    private val markMessagesAsReadUseCase: MarkMessagesAsReadUseCase,\r\n    private val sendTextMessageUseCase: SendTextMessageUseCase,\r\n    private val sendImageMessageUseCase: SendImageMessageUseCase,\r\n    private val sendLocationMessageUseCase: SendLocationMessageUseCase,\r\n    private val uploadImageUseCase: UploadImageUseCase,\r\n    private val addReactionUseCase: AddReactionUseCase,\r\n    private val prefetchMessagesUseCase: PrefetchMessagesUseCase,\r\n    private val audioRecordingUseCase: AudioRecordingUseCase,\r\n    private val updateMessageUseCase: UpdateMessageUseCase,\r\n) : ViewModel() {\r\n    private val tag = \"ChatViewModel\"\r\n    val unreadRoomIds = mutableStateListOf<String>()\r\n    private var messageListener: Any? = null\r\n    private val _chatState = MutableStateFlow<ChatState>(ChatState.Loading)\r\n    val chatState: StateFlow<ChatState> = _chatState\r\n    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())\r\n    val messages: StateFlow<List<ChatMessage>> = _messages\r\n    private var roomId: String? = null\r\n    private var currentUserId: String? = null\r\n    private var otherUserId: String? = null\r\n\r\n    private val _isRecording = MutableStateFlow(false)\r\n    val isRecording: StateFlow<Boolean> = _isRecording\r\n    val recordingStartTime: Long\r\n        get() = audioRecordingUseCase.recordingStartTime\r\n\r\n    private val _showRecordingOverlay = MutableStateFlow(false)\r\n    val showRecordingOverlay: StateFlow<Boolean> = _showRecordingOverlay\r\n\r\n    fun initialize(roomId: String, currentUserId: String, otherUserId: String) {\r\n        this.roomId = roomId\r\n        this.currentUserId = currentUserId\r\n        this.otherUserId = otherUserId\r\n\r\n        Log.d(tag, \"Initializing chat: roomId=$roomId\")\r\n\r\n        viewModelScope.launch {\r\n            try {\r\n                _chatState.value = ChatState.Loading\r\n                val retrievedMessages: List<ChatMessage> = getMessagesUseCase(roomId)\r\n                Log.d(tag, \"Received ${retrievedMessages.size} messages from localdb\")\r\n                _messages.value = retrievedMessages\r\n                _chatState.value = ChatState.Success(retrievedMessages)\r\n\r\n                // Create the room if needed\r\n                initializeChatUseCase(roomId, currentUserId, otherUserId)\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error initializing chat: $e\")\r\n                _chatState.value = ChatState.Error(\"Failed to initialize chat: ${e.message}\")\r\n            }\r\n        }\r\n    }\r\n\r\n    fun initializeMessageListener() {\r\n        roomId?.let { roomId ->\r\n            viewModelScope.launch {\r\n                messageListener?.let {\r\n                    removeMessageListenerUseCase(it)\r\n                }\r\n\r\n                messageListener = addMessageListenerUseCase(\r\n                    roomId = roomId,\r\n                    onMessagesUpdated = { messages ->\r\n                        _messages.value = messages\r\n                        _chatState.value = ChatState.Success(messages)\r\n                    },\r\n                    onError = { errorMessage ->\r\n                        _chatState.value = ChatState.Error(errorMessage)\r\n                    }\r\n                )\r\n            }\r\n        } ?: run {\r\n            logger(tag, \"RoomId is null when trying to initialize message listener\")\r\n            _chatState.value = ChatState.Error(\"Room ID is not set\")\r\n        }\r\n    }\r\n\r\n    fun markMessagesAsRead() {\r\n        viewModelScope.launch {\r\n            try {\r\n                roomId?.let { roomId ->\r\n                    currentUserId?.let { userId ->\r\n                        val unreadMessages = messages.value.filter {\r\n                            !it.read && it.senderId != userId\r\n                        }\r\n                        if (unreadMessages.isNotEmpty()) {\r\n                            markMessagesAsReadUseCase(roomId, userId, unreadMessages)\r\n                        }\r\n                    }\r\n                }\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error marking messages as read: $e\")\r\n            }\r\n        }\r\n    }\r\n\r\n    fun toggleRecording(context: Context) {\r\n        if (_isRecording.value) {\r\n            audioRecordingUseCase.stopRecording()\r\n            _showRecordingOverlay.value = true\r\n        } else {\r\n            audioRecordingUseCase.startRecording(context)\r\n            _showRecordingOverlay.value = true\r\n        }\r\n        _isRecording.value = !_isRecording.value\r\n    }\r\n\r\n    fun resetRecording() {\r\n        _showRecordingOverlay.value = false\r\n    }\r\n\r\n    fun sendMessage(\r\n        content: String, senderName: String, recipientsToken: String, profileUrl: String,\r\n    ) {\r\n        viewModelScope.launch {\r\n            try {\r\n                roomId?.let { roomId ->\r\n                    currentUserId?.let { userId ->\r\n                        sendTextMessageUseCase(\r\n                            roomId = roomId,\r\n                            content = content,\r\n                            senderId = userId,\r\n                            senderName = senderName,\r\n                            recipientsToken = recipientsToken,\r\n                            otherUserId = otherUserId ?: \"\",\r\n                            profileUrl = profileUrl\r\n                        )\r\n                    }\r\n                }\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error sending message: $e\")\r\n                _chatState.value = ChatState.Error(\"Failed to send message: ${e.message}\")\r\n            }\r\n        }\r\n    }\r\n\r\n    fun sendAudioMessage(senderName: String, profileUrl: String, recipientsToken: String) {\r\n        viewModelScope.launch {\r\n            roomId?.let { roomId ->\r\n                currentUserId?.let { userId ->\r\n                    try {\r\n                        audioRecordingUseCase.sendAudioMessage(\r\n                            roomId = roomId,\r\n                            senderId = userId,\r\n                            senderName = senderName,\r\n                            otherUserId = otherUserId ?: \"\",\r\n                            profileUrl = profileUrl,\r\n                            recipientsToken = recipientsToken\r\n                        )\r\n                    } catch (e: Exception) {\r\n                        logger(tag, \"Error sending audio message: $e\")\r\n                    }\r\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n    fun sendImageMessage(\r\n        caption: String,\r\n        imageUrl: String,\r\n        senderName: String,\r\n        roomId: String,\r\n        currentUserId: String,\r\n        profileUrl: String,\r\n        recipientsToken: String,\r\n    ) {\r\n        viewModelScope.launch {\r\n            try {\r\n                sendImageMessageUseCase(\r\n                    caption = caption,\r\n                    imageUrl = imageUrl,\r\n                    senderName = senderName,\r\n                    roomId = roomId,\r\n                    senderId = currentUserId,\r\n                    otherUserId = otherUserId ?: \"\",\r\n                    profileUrl = profileUrl,\r\n                    recipientsToken = recipientsToken\r\n                )\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error sending image message: $e\")\r\n            }\r\n        }\r\n    }\r\n\r\n    fun sendLocationMessage(\r\n        latitude: Double,\r\n        longitude: Double,\r\n        senderName: String,\r\n        roomId: String,\r\n        currentUserId: String,\r\n        profileUrl: String,\r\n        recipientsToken: String,\r\n    ) {\r\n        viewModelScope.launch {\r\n            try {\r\n                sendLocationMessageUseCase(\r\n                    latitude = latitude,\r\n                    longitude = longitude,\r\n                    senderName = senderName,\r\n                    roomId = roomId,\r\n                    senderId = currentUserId,\r\n                    otherUserId = otherUserId ?: \"\",\r\n                    profileUrl = profileUrl,\r\n                    recipientsToken = recipientsToken\r\n                )\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error sending location message: $e\")\r\n            }\r\n        }\r\n    }\r\n\r\n    suspend fun uploadImage(imageUri: Uri, username: String): String? {\r\n        return uploadImageUseCase(imageUri, username)\r\n    }\r\n\r\n    fun addReactionToMessage(\r\n        roomId: String,\r\n        messageId: String,\r\n        userId: String,\r\n        emoji: String,\r\n        messageContent: String,\r\n    ) {\r\n        viewModelScope.launch {\r\n            try {\r\n                addReactionUseCase(\r\n                    roomId = roomId,\r\n                    messageId = messageId,\r\n                    userId = userId,\r\n                    emoji = emoji,\r\n                    messageContent = messageContent,\r\n                )\r\n            } catch (e: Exception) {\r\n                logger(tag, \"Error adding reaction: $e\")\r\n            }\r\n        }\r\n    }\r\n\r\n    fun updateMessage(\r\n        roomId: String,\r\n        messageId: String,\r\n        newContent: String,\r\n        onSuccess: () -> Unit,\r\n        onFailure: (Exception) -> Unit,\r\n    ) {\r\n        updateMessageUseCase(\r\n            roomId,\r\n            messageId,\r\n            newContent,\r\n            onSuccess,\r\n            onFailure,\r\n        )\r\n    }\r\n\r\n    suspend fun prefetchNewMessagesForRoom(roomId: String) {\r\n        prefetchMessagesUseCase(roomId)\r\n    }\r\n\r\n    override fun onCleared() {\r\n        super.onCleared()\r\n        Log.d(tag, \"onCleared: Removing Firestore message listener and media recorder\")\r\n        viewModelScope.launch {\r\n            messageListener?.let {\r\n                removeMessageListenerUseCase(it)\r\n            }\r\n        }\r\n        audioRecordingUseCase.reset()\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/chatRoom/presentation/viewmodels/ChatViewModel.kt b/app/src/main/java/com/pdm/vczap_o/chatRoom/presentation/viewmodels/ChatViewModel.kt
+--- a/app/src/main/java/com/pdm/vczap_o/chatRoom/presentation/viewmodels/ChatViewModel.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/chatRoom/presentation/viewmodels/ChatViewModel.kt	(date 1756240070857)
+@@ -155,8 +155,22 @@
+     ) {
+         viewModelScope.launch {
+             try {
++                Log.d(tag, "🎯 INICIANDO sendMessage no ChatViewModel")
++                Log.d(tag, "📝 Parâmetros:")
++                Log.d(tag, "   - content: '$content'")
++                Log.d(tag, "   - senderName: $senderName")
++                Log.d(tag, "   - recipientsToken: ${recipientsToken.take(10)}...")
++                Log.d(tag, "   - profileUrl: $profileUrl")
++                
++                Log.d(tag, "🔍 Verificando IDs:")
++                Log.d(tag, "   - roomId: $roomId")
++                Log.d(tag, "   - currentUserId: $currentUserId")
++                Log.d(tag, "   - otherUserId: $otherUserId")
++                
+                 roomId?.let { roomId ->
+                     currentUserId?.let { userId ->
++                        Log.d(tag, "✅ IDs válidos. Chamando sendTextMessageUseCase...")
++                        
+                         sendTextMessageUseCase(
+                             roomId = roomId,
+                             content = content,
+@@ -166,9 +180,19 @@
+                             otherUserId = otherUserId ?: "",
+                             profileUrl = profileUrl
+                         )
++                        
++                        Log.d(tag, "🎉 sendTextMessageUseCase concluído com sucesso!")
++                    } ?: run {
++                        Log.e(tag, "❌ ERRO: currentUserId é null!")
++                        _chatState.value = ChatState.Error("User ID not available")
+                     }
++                } ?: run {
++                    Log.e(tag, "❌ ERRO: roomId é null!")
++                    _chatState.value = ChatState.Error("Room ID not available")
+                 }
+             } catch (e: Exception) {
++                Log.e(tag, "💥 ERRO CRÍTICO no sendMessage: ${e.message}")
++                Log.e(tag, "📍 Stack trace: ${e.stackTrace.contentToString()}")
+                 logger(tag, "Error sending message: $e")
+                 _chatState.value = ChatState.Error("Failed to send message: ${e.message}")
+             }
+Index: gradle/libs.versions.toml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>[versions]\r\naccompanistSystemuicontroller = \"0.36.0\"\r\nagp = \"8.12.0\"\r\nbenchmarkMacroJunit4 = \"1.4.0\"\r\ncameraCore = \"1.4.2\"\r\ncoilCompose = \"2.7.0\"\r\nconverterGson = \"3.0.0\"\r\ndatastorePreferences = \"1.1.7\"\r\nfirebaseBom = \"33.16.0\"\r\ngson = \"2.13.1\"\r\nhiltAndroid = \"2.57\"\r\nhiltAndroidCompiler = \"2.57\"\r\nhiltNavigationCompose = \"1.2.0\"\r\nkotlin = \"2.2.0\"\r\ncoreKtx = \"1.17.0\"\r\njunit = \"4.13.2\"\r\njunitVersion = \"1.3.0\"\r\nespressoCore = \"3.7.0\"\r\nlifecycleRuntimeKtx = \"2.9.2\"\r\nactivityCompose = \"1.10.1\"\r\ncomposeBom = \"2025.08.00\"\r\nlottieCompose = \"6.6.7\"\r\nmedia3Exoplayer = \"1.8.0\"\r\nmedia3Ui = \"1.8.0\"\r\nnavVersion = \"2.9.3\"\r\nplayServicesLocation = \"21.3.0\"\r\nprofileinstaller = \"1.4.1\"\r\nretrofit = \"3.0.0\"\r\nroomCompilerVersion = \"2.7.2\"\r\nroomKtx = \"2.7.2\"\r\nroomRuntime = \"2.7.2\"\r\nucrop = \"2.2.10\"\r\nuiautomator = \"2.3.0\"\r\nbaselineprofile = \"1.4.0\"\r\nmaterial3 = \"1.5.0-alpha02\"\r\nhiltPlugin = \"2.57\"\r\nksp = \"2.2.0-2.0.2\"\r\nkotlinxSerializationCore = \"1.9.0\"\r\nkotlinxSerialization = \"2.2.10\"\r\n\r\n[libraries]\r\naccompanist-systemuicontroller = { module = \"com.google.accompanist:accompanist-systemuicontroller\", version.ref = \"accompanistSystemuicontroller\" }\r\nandroidx-benchmark-macro-junit4 = { module = \"androidx.benchmark:benchmark-macro-junit4\", version.ref = \"benchmarkMacroJunit4\" }\r\nandroidx-camera-camera2 = { module = \"androidx.camera:camera-camera2\", version.ref = \"cameraCore\" }\r\nandroidx-camera-core = { module = \"androidx.camera:camera-core\", version.ref = \"cameraCore\" }\r\nandroidx-camera-lifecycle = { module = \"androidx.camera:camera-lifecycle\", version.ref = \"cameraCore\" }\r\nandroidx-camera-view = { module = \"androidx.camera:camera-view\", version.ref = \"cameraCore\" }\r\nandroidx-core-ktx = { group = \"androidx.core\", name = \"core-ktx\", version.ref = \"coreKtx\" }\r\nandroidx-datastore-preferences = { module = \"androidx.datastore:datastore-preferences\", version.ref = \"datastorePreferences\" }\r\nandroidx-hilt-navigation-compose = { module = \"androidx.hilt:hilt-navigation-compose\", version.ref = \"hiltNavigationCompose\" }\r\nandroidx-material-icons-extended = { module = \"androidx.compose.material:material-icons-extended\" }\r\nandroidx-media3-exoplayer = { module = \"androidx.media3:media3-exoplayer\", version.ref = \"media3Exoplayer\" }\r\nandroidx-media3-ui = { module = \"androidx.media3:media3-ui\", version.ref = \"media3Ui\" }\r\nandroidx-navigation-compose = { module = \"androidx.navigation:navigation-compose\", version.ref = \"navVersion\" }\r\nandroidx-profileinstaller = { module = \"androidx.profileinstaller:profileinstaller\", version.ref = \"profileinstaller\" }\r\nandroidx-room-ktx = { module = \"androidx.room:room-ktx\", version.ref = \"roomKtx\" }\r\nandroidx-room-runtime = { module = \"androidx.room:room-runtime\", version.ref = \"roomRuntime\" }\r\ncoil-compose = { module = \"io.coil-kt:coil-compose\", version.ref = \"coilCompose\" }\r\nconverter-gson = { module = \"com.squareup.retrofit2:converter-gson\", version.ref = \"converterGson\" }\r\nfirebase-bom = { module = \"com.google.firebase:firebase-bom\", version.ref = \"firebaseBom\" }\r\nfirebase-auth-ktx = { module = \"com.google.firebase:firebase-auth-ktx\" }\r\nfirebase-firestore-ktx = { module = \"com.google.firebase:firebase-firestore-ktx\" }\r\nfirebase-messaging-ktx = { module = \"com.google.firebase:firebase-messaging-ktx\" }\r\nfirebase-storage-ktx = { module = \"com.google.firebase:firebase-storage-ktx\" }\r\ngson = { module = \"com.google.code.gson:gson\", version.ref = \"gson\" }\r\nhilt-android = { module = \"com.google.dagger:hilt-android\", version.ref = \"hiltAndroid\" }\r\nhilt-android-compiler = { module = \"com.google.dagger:hilt-android-compiler\", version.ref = \"hiltAndroidCompiler\" }\r\njunit = { group = \"junit\", name = \"junit\", version.ref = \"junit\" }\r\nandroidx-junit = { group = \"androidx.test.ext\", name = \"junit\", version.ref = \"junitVersion\" }\r\nandroidx-espresso-core = { group = \"androidx.test.espresso\", name = \"espresso-core\", version.ref = \"espressoCore\" }\r\nandroidx-lifecycle-runtime-ktx = { group = \"androidx.lifecycle\", name = \"lifecycle-runtime-ktx\", version.ref = \"lifecycleRuntimeKtx\" }\r\nandroidx-activity-compose = { group = \"androidx.activity\", name = \"activity-compose\", version.ref = \"activityCompose\" }\r\nandroidx-compose-bom = { group = \"androidx.compose\", name = \"compose-bom\", version.ref = \"composeBom\" }\r\nandroidx-ui = { group = \"androidx.compose.ui\", name = \"ui\" }\r\nandroidx-ui-graphics = { group = \"androidx.compose.ui\", name = \"ui-graphics\" }\r\nandroidx-ui-tooling = { group = \"androidx.compose.ui\", name = \"ui-tooling\" }\r\nandroidx-ui-tooling-preview = { group = \"androidx.compose.ui\", name = \"ui-tooling-preview\" }\r\nandroidx-ui-test-manifest = { group = \"androidx.compose.ui\", name = \"ui-test-manifest\" }\r\nandroidx-ui-test-junit4 = { group = \"androidx.compose.ui\", name = \"ui-test-junit4\" }\r\nandroidx-uiautomator = { group = \"androidx.test.uiautomator\", name = \"uiautomator\", version.ref = \"uiautomator\" }\r\nlottie-compose = { module = \"com.airbnb.android:lottie-compose\", version.ref = \"lottieCompose\" }\r\nplay-services-location = { module = \"com.google.android.gms:play-services-location\", version.ref = \"playServicesLocation\" }\r\nretrofit = { module = \"com.squareup.retrofit2:retrofit\", version.ref = \"retrofit\" }\r\nroom-compiler = { module = \"androidx.room:room-compiler\", version.ref = \"roomCompilerVersion\" }\r\nucrop = { module = \"com.github.yalantis:ucrop\", version.ref = \"ucrop\" }\r\nmaterial3 = { module = \"androidx.compose.material3:material3\", version.ref = \"material3\" }\r\nkotlinx-serialization-json = { module = \"org.jetbrains.kotlinx:kotlinx-serialization-json\", version.ref = \"kotlinxSerializationCore\" }\r\n\r\n\r\n[plugins]\r\nandroid-application = { id = \"com.android.application\", version.ref = \"agp\" }\r\nkotlin-android = { id = \"org.jetbrains.kotlin.android\", version.ref = \"kotlin\" }\r\nkotlin-compose = { id = \"org.jetbrains.kotlin.plugin.compose\", version.ref = \"kotlin\" }\r\nandroid-test = { id = \"com.android.test\", version.ref = \"agp\" }\r\nbaselineprofile = { id = \"androidx.baselineprofile\", version.ref = \"baselineprofile\" }\r\nhilt = { id = \"com.google.dagger.hilt.android\", version.ref = \"hiltPlugin\" }\r\nksp = { id = \"com.google.devtools.ksp\", version.ref = \"ksp\" }\r\nkotlin-serialization = { id = \"org.jetbrains.kotlin.plugin.serialization\", version.ref = \"kotlinxSerialization\" }\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+--- a/gradle/libs.versions.toml	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/gradle/libs.versions.toml	(date 1756167546612)
+@@ -37,6 +37,7 @@
+ ksp = "2.2.0-2.0.2"
+ kotlinxSerializationCore = "1.9.0"
+ kotlinxSerialization = "2.2.10"
++testng = "6.9.6"
+ 
+ [libraries]
+ accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSystemuicontroller" }
+@@ -85,6 +86,7 @@
+ ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
+ material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }
+ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationCore" }
++testng = { group = "org.testng", name = "testng", version.ref = "testng" }
+ 
+ 
+ [plugins]
+Index: .idea/studiobot.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/studiobot.xml b/.idea/studiobot.xml
+new file mode 100644
+--- /dev/null	(date 1756165465231)
++++ b/.idea/studiobot.xml	(date 1756165465231)
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="StudioBotProjectSettings">
++    <option name="shareContext" value="OptedIn" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/deploymentTargetSelector.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"deploymentTargetSelector\">\r\n    <selectionStates>\r\n      <SelectionState runConfigName=\"app\">\r\n        <option name=\"selectionMode\" value=\"DROPDOWN\" />\r\n      </SelectionState>\r\n    </selectionStates>\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/deploymentTargetSelector.xml b/.idea/deploymentTargetSelector.xml
+--- a/.idea/deploymentTargetSelector.xml	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/.idea/deploymentTargetSelector.xml	(date 1756239527502)
+@@ -4,6 +4,14 @@
+     <selectionStates>
+       <SelectionState runConfigName="app">
+         <option name="selectionMode" value="DROPDOWN" />
++        <DropdownSelection timestamp="2025-08-26T20:17:19.082415500Z">
++          <Target type="DEFAULT_BOOT">
++            <handle>
++              <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Public\Android\avd\Pixel_7_Pro.avd" />
++            </handle>
++          </Target>
++        </DropdownSelection>
++        <DialogSelection />
+       </SelectionState>
+     </selectionStates>
+   </component>
+Index: app/src/main/java/com/pdm/vczap_o/chatRoom/data/repository/SendMessageRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.chatRoom.data.repository\r\n\r\nimport android.app.Application\r\nimport android.util.Base64\r\nimport android.util.Log\r\nimport com.google.firebase.Timestamp\r\nimport com.google.firebase.firestore.FirebaseFirestore\r\nimport com.pdm.vczap_o.core.domain.logger\r\nimport com.pdm.vczap_o.core.model.ChatMessage\r\nimport com.pdm.vczap_o.core.model.Location\r\nimport com.pdm.vczap_o.cripto.CryptoUtils\r\nimport com.pdm.vczap_o.cripto.SignalProtocolManager\r\nimport com.pdm.vczap_o.home.data.HomeRepository\r\nimport kotlinx.coroutines.tasks.await\r\nimport org.whispersystems.libsignal.SessionBuilder\r\nimport org.whispersystems.libsignal.SessionCipher\r\nimport org.whispersystems.libsignal.SignalProtocolAddress\r\nimport javax.inject.Inject\r\n\r\nclass SendMessageRepository @Inject constructor(\r\n    private val firestore: FirebaseFirestore,\r\n    private val homeRepository: HomeRepository,\r\n    private val application: Application\r\n) {\r\n    private val tag = \"SendMessageRepository\"\r\n\r\n    suspend fun sendTextMessage(\r\n        roomId: String,\r\n        content: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        otherUserId: String // ID do outro usuário para criptografia\r\n    ) {\r\n        try {\r\n            // --- INÍCIO DA LÓGICA DE CRIPTOGRAFIA ---\r\n            val signalManager = SignalProtocolManager(application, senderId)\r\n            val remoteAddress = SignalProtocolAddress(otherUserId, 1) // Device ID 1\r\n\r\n            // Se não houver sessão com o outro usuário, estabelece uma nova\r\n            if (!signalManager.store.containsSession(remoteAddress)) {\r\n                val userKeys = homeRepository.getUserKeys(otherUserId)\r\n                    ?: throw Exception(\"Não foi possível obter as chaves do usuário para iniciar a sessão\")\r\n                val preKeyBundle = CryptoUtils.parsePreKeyBundle(userKeys)\r\n                val sessionBuilder = SessionBuilder(signalManager.store, remoteAddress)\r\n                sessionBuilder.process(preKeyBundle)\r\n                Log.d(tag, \"Nova sessão segura estabelecida com $otherUserId\")\r\n            }\r\n\r\n            val sessionCipher = SessionCipher(signalManager.store, remoteAddress)\r\n\r\n            // Criptografa a mensagem\r\n            val encryptedCipher = sessionCipher.encrypt(content.toByteArray(Charsets.UTF_8))\r\n            val encryptedContent = Base64.encodeToString(encryptedCipher.serialize(), Base64.NO_WRAP)\r\n            val encryptionType = encryptedCipher.type\r\n            // --- FIM DA LÓGICA DE CRIPTOGRAFIA ---\r\n\r\n            Log.d(tag, \"Enviando mensagem criptografada para roomId=$roomId\")\r\n\r\n            val messageData = hashMapOf(\r\n                \"content\" to encryptedContent, // Envia o conteúdo criptografado\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"text\",\r\n                \"read\" to false,\r\n                \"delivered\" to false,\r\n                \"encryptionType\" to encryptionType // Adiciona o tipo para a decriptografia\r\n            )\r\n\r\n            // Adiciona a mensagem criptografada ao Firestore\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Mensagem criptografada enviada com id=${addedDoc.id}\")\r\n\r\n            // Atualiza a última mensagem da sala com um texto genérico\r\n            updateRoomLastMessage(roomId, \"\uD83D\uDD12 Mensagem criptografada\", senderId)\r\n\r\n        } catch (e: Exception) {\r\n            logger(tag, \"Erro ao enviar mensagem criptografada: $e\")\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun sendAudioMessage(\r\n        roomId: String,\r\n        content: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        audioUrl: String?,\r\n        duration: Long,\r\n    ) {\r\n        try {\r\n            val messageData = hashMapOf(\r\n                \"content\" to content,\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"audio\",\r\n                \"read\" to false,\r\n                \"delivered\" to false,\r\n                \"audio\" to audioUrl,\r\n                \"duration\" to duration\r\n            )\r\n\r\n            firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n\r\n            updateRoomLastMessage(roomId, \"\uD83C\uDFB5 Mensagem de áudio\", senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending audio message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun sendImageMessage(\r\n        roomId: String,\r\n        caption: String,\r\n        imageUrl: String,\r\n        senderId: String,\r\n        senderName: String,\r\n    ) {\r\n        try {\r\n            val messageData = hashMapOf(\r\n                \"content\" to caption,\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"image\",\r\n                \"read\" to false,\r\n                \"delivered\" to false,\r\n                \"image\" to imageUrl\r\n            )\r\n\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Image message sent with id=${addedDoc.id}\")\r\n\r\n            updateRoomLastMessage(roomId, \"\uD83D\uDCF7 Imagem\", senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending image message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun sendLocationMessage(\r\n        roomId: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        location: Location,\r\n    ) {\r\n        try {\r\n            val locationData = mapOf(\r\n                \"latitude\" to location.latitude,\r\n                \"longitude\" to location.longitude\r\n            )\r\n\r\n            val messageData = hashMapOf(\r\n                \"content\" to \"$locationData\",\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"location\",\r\n                \"location\" to locationData,\r\n                \"read\" to false,\r\n                \"delivered\" to false\r\n            )\r\n\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Location message sent with id=${addedDoc.id}\")\r\n\r\n            updateRoomLastMessage(roomId, \"\uD83D\uDCCD Localização\", senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending location message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    fun addReactionToMessage(\r\n        roomId: String,\r\n        messageId: String,\r\n        userId: String,\r\n        emoji: String,\r\n        messageContent: String,\r\n    ) {\r\n        try {\r\n            Log.e(tag, \"Adding reaction\")\r\n            val messageRef = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .document(messageId)\r\n\r\n            messageRef.get().addOnSuccessListener { document ->\r\n                val message = document.toObject(ChatMessage::class.java)\r\n                message?.let {\r\n                    val updatedReactions = it.reactions.toMutableMap()\r\n\r\n                    if (updatedReactions[userId] == emoji) {\r\n                        updatedReactions.remove(userId)\r\n                    } else {\r\n                        updatedReactions[userId] = emoji\r\n                    }\r\n\r\n                    messageRef.update(\"reactions\", updatedReactions).addOnSuccessListener {\r\n                        Log.e(tag, \"Reaction Added Successfully\")\r\n                        firestore.collection(\"rooms\").document(roomId).update(\r\n                            mapOf(\r\n                                \"lastMessage\" to \"reagiu com $emoji a '$messageContent'\",\r\n                                \"lastMessageTimestamp\" to Timestamp.now(),\r\n                                \"lastMessageSenderId\" to userId\r\n                            )\r\n                        )\r\n                    }.addOnFailureListener { e ->\r\n                        Log.e(tag, \"Failed to update reactions: ${e.message}\")\r\n                    }\r\n                }\r\n            }\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error updating reaction\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun updateRoomLastMessage(\r\n        roomId: String,\r\n        lastMessage: String,\r\n        senderId: String,\r\n    ) {\r\n        try {\r\n            firestore.collection(\"rooms\").document(roomId).update(\r\n                mapOf(\r\n                    \"lastMessage\" to lastMessage,\r\n                    \"lastMessageTimestamp\" to Timestamp.now(),\r\n                    \"lastMessageSenderId\" to senderId\r\n                )\r\n            ).await()\r\n            Log.d(tag, \"Room's last message updated successfully for roomId=$roomId\")\r\n        } catch (e: Exception) {\r\n            logger(tag, \"Error updating room's last message: $e\")\r\n            throw e\r\n        }\r\n    }\r\n}\r\n/*\r\nimport android.app.Application\r\nimport android.util.Log\r\nimport com.pdm.vczap_o.core.domain.logger\r\nimport com.pdm.vczap_o.core.model.ChatMessage\r\nimport com.pdm.vczap_o.core.model.Location\r\nimport com.google.firebase.Timestamp\r\nimport com.google.firebase.firestore.FirebaseFirestore\r\nimport kotlinx.coroutines.tasks.await\r\nimport javax.inject.Inject\r\nimport com.pdm.vczap_o.cripto.CryptoUtils\r\nimport com.pdm.vczap_o.cripto.SignalProtocolManager\r\nimport com.pdm.vczap_o.home.data.HomeRepository\r\nimport org.whispersystems.libsignal.SessionBuilder\r\nimport org.whispersystems.libsignal.SessionCipher\r\nimport org.whispersystems.libsignal.SignalProtocolAddress\r\nimport org.whispersystems.libsignal.protocol.CiphertextMessage\r\nimport org.whispersystems.libsignal.protocol.PreKeySignalMessage\r\n\r\nclass SendMessageRepository @Inject constructor(\r\n    private val firestore: FirebaseFirestore,\r\n    private val homeRepository: HomeRepository,\r\n    private val application: Application // Injete o contexto da aplicação via Hilt\r\n) {\r\n    private val tag = \"MessageRepository\"\r\n\r\n    /*\r\n    suspend fun sendTextMessage(\r\n        roomId: String,\r\n        content: String,\r\n        senderId: String,\r\n        senderName: String,\r\n    ) {\r\n        try {\r\n            Log.d(\r\n                tag,\r\n                \"Sending message: content='$content', senderId=$senderId, senderName=$senderName, roomId=$roomId\"\r\n            )\r\n            val messageData = hashMapOf(\r\n                \"content\" to content,\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"text\",\r\n                \"read\" to false,\r\n                \"delivered\" to false\r\n            )\r\n\r\n            // Add message to Firestore\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Message sent to Firestore with document id=${addedDoc.id}\")\r\n\r\n            // Update room's last message\r\n            updateRoomLastMessage(roomId, content, senderId)\r\n        } catch (e: Exception) {\r\n            logger(tag, \"Error sending message $e\")\r\n            throw e\r\n        }\r\n    }*/\r\n    suspend fun sendTextMessage(message: Message, roomId: String, otherUserId: String) {\r\n        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return\r\n        val signalManager = SignalProtocolManager(application, currentUserId)\r\n        val remoteAddress = SignalProtocolAddress(otherUserId, 1) // Device ID 1\r\n\r\n        val sessionCipher = SessionCipher(signalManager.store, remoteAddress)\r\n\r\n        // Se não houver sessão, construa uma primeiro\r\n        if (!signalManager.store.containsSession(remoteAddress)) {\r\n            val userKeys = homeRepository.getUserKeys(otherUserId) ?: throw Exception(\"Não foi possível obter as chaves do usuário para iniciar a sessão\")\r\n            val preKeyBundle = CryptoUtils.parsePreKeyBundle(userKeys)\r\n            val sessionBuilder = SessionBuilder(signalManager.store, remoteAddress)\r\n            sessionBuilder.process(preKeyBundle)\r\n        }\r\n\r\n        // Criptografe a mensagem\r\n        val encryptedCipher = sessionCipher.encrypt(message.content.toByteArray(Charsets.UTF_8))\r\n        val encryptedContent = Base64.encodeToString(encryptedCipher.serialize(), Base64.NO_WRAP)\r\n\r\n        // Defina o tipo de criptografia para que o destinatário saiba como decriptografar\r\n        val encryptionType = encryptedCipher.type\r\n\r\n        val encryptedMessage = message.copy(\r\n            content = encryptedContent,\r\n            encryptionType = encryptionType\r\n        )\r\n\r\n        firestore.collection(\"rooms\").document(roomId).collection(\"messages\").add(encryptedMessage).await()\r\n    }\r\n\r\n\r\n\r\n\r\n    suspend fun sendAudioMessage(\r\n        roomId: String,\r\n        content: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        audioUrl: String?,\r\n        duration: Long,\r\n    ) {\r\n        try {\r\n            val messageData = hashMapOf(\r\n                \"content\" to content,\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"audio\",\r\n                \"read\" to false,\r\n                \"delivered\" to false,\r\n                \"audio\" to audioUrl,\r\n                \"duration\" to duration\r\n            )\r\n\r\n            firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n\r\n            updateRoomLastMessage(roomId, content, senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending audio message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun sendImageMessage(\r\n        roomId: String,\r\n        caption: String,\r\n        imageUrl: String,\r\n        senderId: String,\r\n        senderName: String,\r\n    ) {\r\n        try {\r\n            val messageData = hashMapOf(\r\n                \"content\" to caption,\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"image\",\r\n                \"read\" to false,\r\n                \"delivered\" to false,\r\n                \"image\" to imageUrl\r\n            )\r\n\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Image message sent with id=${addedDoc.id}\")\r\n\r\n            updateRoomLastMessage(roomId, \"\uD83D\uDCF7 Sent an image\", senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending image message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun sendLocationMessage(\r\n        roomId: String,\r\n        senderId: String,\r\n        senderName: String,\r\n        location: Location,\r\n    ) {\r\n        try {\r\n            // Create a map for the location data\r\n            val locationData = mapOf(\r\n                \"latitude\" to location.latitude,\r\n                \"longitude\" to location.longitude\r\n            )\r\n\r\n            val messageData = hashMapOf(\r\n                \"content\" to \"$locationData\",\r\n                \"createdAt\" to Timestamp.now(),\r\n                \"senderId\" to senderId,\r\n                \"senderName\" to senderName,\r\n                \"type\" to \"location\",\r\n                \"location\" to locationData,\r\n                \"read\" to false,\r\n                \"delivered\" to false\r\n            )\r\n\r\n            val addedDoc = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .add(messageData).await()\r\n            Log.d(tag, \"Location message sent with id=${addedDoc.id}\")\r\n\r\n            updateRoomLastMessage(roomId, \"Shared a location\", senderId)\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error sending location message\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    fun addReactionToMessage(\r\n        roomId: String,\r\n        messageId: String,\r\n        userId: String,\r\n        emoji: String,\r\n        messageContent: String,\r\n    ) {\r\n        try {\r\n            Log.e(tag, \"Adding reaction\")\r\n            val messageRef = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n                .document(messageId)\r\n\r\n            messageRef.get().addOnSuccessListener { document ->\r\n                val message = document.toObject(ChatMessage::class.java)\r\n                message?.let {\r\n                    val updatedReactions = it.reactions.toMutableMap()\r\n\r\n                    if (updatedReactions[userId] == emoji) {\r\n                        updatedReactions.remove(userId) // Remove reaction if already present\r\n                    } else {\r\n                        updatedReactions[userId] = emoji // Add or update reaction\r\n                    }\r\n\r\n                    messageRef.update(\"reactions\", updatedReactions).addOnSuccessListener {\r\n                        Log.e(tag, \"Reaction Added Successfully\")\r\n                        // Now update the room's last message\r\n                        firestore.collection(\"rooms\").document(roomId).update(\r\n                            mapOf(\r\n                                \"lastMessage\" to \"reacted $emoji to $messageContent\",\r\n                                \"lastMessageTimestamp\" to Timestamp.now(),\r\n                                \"lastMessageSenderId\" to userId\r\n                            )\r\n                        ).addOnSuccessListener {\r\n                            Log.e(tag, \"Room's last message updated for reaction\")\r\n                        }.addOnFailureListener { e ->\r\n                            Log.e(\r\n                                tag,\r\n                                \"Failed to update room's last message: ${e.message}\"\r\n                            )\r\n                        }\r\n                    }.addOnFailureListener { e ->\r\n                        Log.e(tag, \"Failed to update reactions: ${e.message}\")\r\n                    }\r\n                }\r\n            }\r\n        } catch (e: Exception) {\r\n            Log.e(tag, \"Error updating reaction\", e)\r\n            throw e\r\n        }\r\n    }\r\n\r\n    suspend fun updateRoomLastMessage(\r\n        roomId: String,\r\n        lastMessage: String,\r\n        senderId: String,\r\n    ) {\r\n        try {\r\n            firestore.collection(\"rooms\").document(roomId).update(\r\n                mapOf(\r\n                    \"lastMessage\" to lastMessage,\r\n                    \"lastMessageTimestamp\" to Timestamp.now(),\r\n                    \"lastMessageSenderId\" to senderId\r\n                )\r\n            ).await()\r\n            Log.d(tag, \"Room's last message updated successfully for roomId=$roomId\")\r\n        } catch (e: Exception) {\r\n            logger(tag, \"Error updating room's last message: $e\")\r\n            throw e\r\n        }\r\n    }\r\n}*/
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/chatRoom/data/repository/SendMessageRepository.kt b/app/src/main/java/com/pdm/vczap_o/chatRoom/data/repository/SendMessageRepository.kt
+--- a/app/src/main/java/com/pdm/vczap_o/chatRoom/data/repository/SendMessageRepository.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/chatRoom/data/repository/SendMessageRepository.kt	(date 1756239222782)
+@@ -4,6 +4,7 @@
+ import android.util.Base64
+ import android.util.Log
+ import com.google.firebase.Timestamp
++import com.google.firebase.auth.FirebaseAuth
+ import com.google.firebase.firestore.FirebaseFirestore
+ import com.pdm.vczap_o.core.domain.logger
+ import com.pdm.vczap_o.core.model.ChatMessage
+@@ -32,29 +33,59 @@
+         otherUserId: String // ID do outro usuário para criptografia
+     ) {
+         try {
++            Log.d(tag, "🚀 INICIANDO envio de mensagem criptografada")
++            Log.d(tag, "📝 Parâmetros: roomId=$roomId, senderId=$senderId, otherUserId=$otherUserId")
++            Log.d(tag, "💬 Conteúdo original: '$content'")
++
+             // --- INÍCIO DA LÓGICA DE CRIPTOGRAFIA ---
++            Log.d(tag, "🔐 Inicializando SignalProtocolManager para senderId=$senderId")
+             val signalManager = SignalProtocolManager(application, senderId)
++            
++            // Verificar se as chaves do remetente estão inicializadas
++            if (!signalManager.isInitialized()) {
++                Log.e(tag, "❌ ERRO: Chaves do remetente não estão inicializadas!")
++                throw Exception("Chaves do remetente não inicializadas. Faça logout e login novamente.")
++            }
++            Log.d(tag, "✅ Chaves do remetente verificadas")
++
+             val remoteAddress = SignalProtocolAddress(otherUserId, 1) // Device ID 1
++            Log.d(tag, "📡 Endereço remoto criado: ${remoteAddress.name}:${remoteAddress.deviceId}")
+ 
+             // Se não houver sessão com o outro usuário, estabelece uma nova
+             if (!signalManager.store.containsSession(remoteAddress)) {
++                Log.d(tag, "🔄 Sessão não existe. Buscando chaves do usuário $otherUserId...")
++                
+                 val userKeys = homeRepository.getUserKeys(otherUserId)
+-                    ?: throw Exception("Não foi possível obter as chaves do usuário para iniciar a sessão")
++                if (userKeys == null) {
++                    Log.e(tag, "❌ ERRO: Não foi possível obter as chaves do usuário $otherUserId")
++                    throw Exception("Não foi possível obter as chaves do usuário para iniciar a sessão")
++                }
++                Log.d(tag, "✅ Chaves do destinatário obtidas: ${userKeys.keys}")
++                
++                Log.d(tag, "🔧 Criando PreKeyBundle...")
+                 val preKeyBundle = CryptoUtils.parsePreKeyBundle(userKeys)
++                Log.d(tag, "✅ PreKeyBundle criado com registrationId=${preKeyBundle.registrationId}")
++                
++                Log.d(tag, "🏗️ Construindo sessão...")
+                 val sessionBuilder = SessionBuilder(signalManager.store, remoteAddress)
+                 sessionBuilder.process(preKeyBundle)
+-                Log.d(tag, "Nova sessão segura estabelecida com $otherUserId")
++                Log.d(tag, "✅ Nova sessão segura estabelecida com $otherUserId")
++            } else {
++                Log.d(tag, "✅ Sessão existente encontrada com $otherUserId")
+             }
+ 
++            Log.d(tag, "🔒 Criando SessionCipher...")
+             val sessionCipher = SessionCipher(signalManager.store, remoteAddress)
+ 
+             // Criptografa a mensagem
++            Log.d(tag, "🔐 Criptografando mensagem...")
+             val encryptedCipher = sessionCipher.encrypt(content.toByteArray(Charsets.UTF_8))
+             val encryptedContent = Base64.encodeToString(encryptedCipher.serialize(), Base64.NO_WRAP)
+             val encryptionType = encryptedCipher.type
++            Log.d(tag, "✅ Mensagem criptografada. Tipo: $encryptionType, Tamanho: ${encryptedContent.length}")
+             // --- FIM DA LÓGICA DE CRIPTOGRAFIA ---
+ 
+-            Log.d(tag, "Enviando mensagem criptografada para roomId=$roomId")
++            Log.d(tag, "📤 Enviando mensagem criptografada para Firestore...")
+ 
+             val messageData = hashMapOf(
+                 "content" to encryptedContent, // Envia o conteúdo criptografado
+@@ -70,12 +101,16 @@
+             // Adiciona a mensagem criptografada ao Firestore
+             val addedDoc = firestore.collection("rooms").document(roomId).collection("messages")
+                 .add(messageData).await()
+-            Log.d(tag, "Mensagem criptografada enviada com id=${addedDoc.id}")
++            Log.d(tag, "✅ Mensagem criptografada enviada com id=${addedDoc.id}")
+ 
+             // Atualiza a última mensagem da sala com um texto genérico
++            Log.d(tag, "📝 Atualizando última mensagem da sala...")
+             updateRoomLastMessage(roomId, "🔒 Mensagem criptografada", senderId)
++            Log.d(tag, "🎉 SUCESSO: Mensagem enviada com criptografia!")
+ 
+         } catch (e: Exception) {
++            Log.e(tag, "💥 ERRO CRÍTICO ao enviar mensagem criptografada: ${e.message}")
++            Log.e(tag, "📍 Stack trace: ${e.stackTrace.contentToString()}")
+             logger(tag, "Erro ao enviar mensagem criptografada: $e")
+             throw e
+         }
+@@ -238,264 +273,4 @@
+             throw e
+         }
+     }
+-}
+-/*
+-import android.app.Application
+-import android.util.Log
+-import com.pdm.vczap_o.core.domain.logger
+-import com.pdm.vczap_o.core.model.ChatMessage
+-import com.pdm.vczap_o.core.model.Location
+-import com.google.firebase.Timestamp
+-import com.google.firebase.firestore.FirebaseFirestore
+-import kotlinx.coroutines.tasks.await
+-import javax.inject.Inject
+-import com.pdm.vczap_o.cripto.CryptoUtils
+-import com.pdm.vczap_o.cripto.SignalProtocolManager
+-import com.pdm.vczap_o.home.data.HomeRepository
+-import org.whispersystems.libsignal.SessionBuilder
+-import org.whispersystems.libsignal.SessionCipher
+-import org.whispersystems.libsignal.SignalProtocolAddress
+-import org.whispersystems.libsignal.protocol.CiphertextMessage
+-import org.whispersystems.libsignal.protocol.PreKeySignalMessage
+-
+-class SendMessageRepository @Inject constructor(
+-    private val firestore: FirebaseFirestore,
+-    private val homeRepository: HomeRepository,
+-    private val application: Application // Injete o contexto da aplicação via Hilt
+-) {
+-    private val tag = "MessageRepository"
+-
+-    /*
+-    suspend fun sendTextMessage(
+-        roomId: String,
+-        content: String,
+-        senderId: String,
+-        senderName: String,
+-    ) {
+-        try {
+-            Log.d(
+-                tag,
+-                "Sending message: content='$content', senderId=$senderId, senderName=$senderName, roomId=$roomId"
+-            )
+-            val messageData = hashMapOf(
+-                "content" to content,
+-                "createdAt" to Timestamp.now(),
+-                "senderId" to senderId,
+-                "senderName" to senderName,
+-                "type" to "text",
+-                "read" to false,
+-                "delivered" to false
+-            )
+-
+-            // Add message to Firestore
+-            val addedDoc = firestore.collection("rooms").document(roomId).collection("messages")
+-                .add(messageData).await()
+-            Log.d(tag, "Message sent to Firestore with document id=${addedDoc.id}")
+-
+-            // Update room's last message
+-            updateRoomLastMessage(roomId, content, senderId)
+-        } catch (e: Exception) {
+-            logger(tag, "Error sending message $e")
+-            throw e
+-        }
+-    }*/
+-    suspend fun sendTextMessage(message: Message, roomId: String, otherUserId: String) {
+-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+-        val signalManager = SignalProtocolManager(application, currentUserId)
+-        val remoteAddress = SignalProtocolAddress(otherUserId, 1) // Device ID 1
+-
+-        val sessionCipher = SessionCipher(signalManager.store, remoteAddress)
+-
+-        // Se não houver sessão, construa uma primeiro
+-        if (!signalManager.store.containsSession(remoteAddress)) {
+-            val userKeys = homeRepository.getUserKeys(otherUserId) ?: throw Exception("Não foi possível obter as chaves do usuário para iniciar a sessão")
+-            val preKeyBundle = CryptoUtils.parsePreKeyBundle(userKeys)
+-            val sessionBuilder = SessionBuilder(signalManager.store, remoteAddress)
+-            sessionBuilder.process(preKeyBundle)
+-        }
+-
+-        // Criptografe a mensagem
+-        val encryptedCipher = sessionCipher.encrypt(message.content.toByteArray(Charsets.UTF_8))
+-        val encryptedContent = Base64.encodeToString(encryptedCipher.serialize(), Base64.NO_WRAP)
+-
+-        // Defina o tipo de criptografia para que o destinatário saiba como decriptografar
+-        val encryptionType = encryptedCipher.type
+-
+-        val encryptedMessage = message.copy(
+-            content = encryptedContent,
+-            encryptionType = encryptionType
+-        )
+-
+-        firestore.collection("rooms").document(roomId).collection("messages").add(encryptedMessage).await()
+-    }
+-
+-
+-
+-
+-    suspend fun sendAudioMessage(
+-        roomId: String,
+-        content: String,
+-        senderId: String,
+-        senderName: String,
+-        audioUrl: String?,
+-        duration: Long,
+-    ) {
+-        try {
+-            val messageData = hashMapOf(
+-                "content" to content,
+-                "createdAt" to Timestamp.now(),
+-                "senderId" to senderId,
+-                "senderName" to senderName,
+-                "type" to "audio",
+-                "read" to false,
+-                "delivered" to false,
+-                "audio" to audioUrl,
+-                "duration" to duration
+-            )
+-
+-            firestore.collection("rooms").document(roomId).collection("messages")
+-                .add(messageData).await()
+-
+-            updateRoomLastMessage(roomId, content, senderId)
+-        } catch (e: Exception) {
+-            Log.e(tag, "Error sending audio message", e)
+-            throw e
+-        }
+-    }
+-
+-    suspend fun sendImageMessage(
+-        roomId: String,
+-        caption: String,
+-        imageUrl: String,
+-        senderId: String,
+-        senderName: String,
+-    ) {
+-        try {
+-            val messageData = hashMapOf(
+-                "content" to caption,
+-                "createdAt" to Timestamp.now(),
+-                "senderId" to senderId,
+-                "senderName" to senderName,
+-                "type" to "image",
+-                "read" to false,
+-                "delivered" to false,
+-                "image" to imageUrl
+-            )
+-
+-            val addedDoc = firestore.collection("rooms").document(roomId).collection("messages")
+-                .add(messageData).await()
+-            Log.d(tag, "Image message sent with id=${addedDoc.id}")
+-
+-            updateRoomLastMessage(roomId, "📷 Sent an image", senderId)
+-        } catch (e: Exception) {
+-            Log.e(tag, "Error sending image message", e)
+-            throw e
+-        }
+-    }
+-
+-    suspend fun sendLocationMessage(
+-        roomId: String,
+-        senderId: String,
+-        senderName: String,
+-        location: Location,
+-    ) {
+-        try {
+-            // Create a map for the location data
+-            val locationData = mapOf(
+-                "latitude" to location.latitude,
+-                "longitude" to location.longitude
+-            )
+-
+-            val messageData = hashMapOf(
+-                "content" to "$locationData",
+-                "createdAt" to Timestamp.now(),
+-                "senderId" to senderId,
+-                "senderName" to senderName,
+-                "type" to "location",
+-                "location" to locationData,
+-                "read" to false,
+-                "delivered" to false
+-            )
+-
+-            val addedDoc = firestore.collection("rooms").document(roomId).collection("messages")
+-                .add(messageData).await()
+-            Log.d(tag, "Location message sent with id=${addedDoc.id}")
+-
+-            updateRoomLastMessage(roomId, "Shared a location", senderId)
+-        } catch (e: Exception) {
+-            Log.e(tag, "Error sending location message", e)
+-            throw e
+-        }
+-    }
+-
+-    fun addReactionToMessage(
+-        roomId: String,
+-        messageId: String,
+-        userId: String,
+-        emoji: String,
+-        messageContent: String,
+-    ) {
+-        try {
+-            Log.e(tag, "Adding reaction")
+-            val messageRef = firestore.collection("rooms").document(roomId).collection("messages")
+-                .document(messageId)
+-
+-            messageRef.get().addOnSuccessListener { document ->
+-                val message = document.toObject(ChatMessage::class.java)
+-                message?.let {
+-                    val updatedReactions = it.reactions.toMutableMap()
+-
+-                    if (updatedReactions[userId] == emoji) {
+-                        updatedReactions.remove(userId) // Remove reaction if already present
+-                    } else {
+-                        updatedReactions[userId] = emoji // Add or update reaction
+-                    }
+-
+-                    messageRef.update("reactions", updatedReactions).addOnSuccessListener {
+-                        Log.e(tag, "Reaction Added Successfully")
+-                        // Now update the room's last message
+-                        firestore.collection("rooms").document(roomId).update(
+-                            mapOf(
+-                                "lastMessage" to "reacted $emoji to $messageContent",
+-                                "lastMessageTimestamp" to Timestamp.now(),
+-                                "lastMessageSenderId" to userId
+-                            )
+-                        ).addOnSuccessListener {
+-                            Log.e(tag, "Room's last message updated for reaction")
+-                        }.addOnFailureListener { e ->
+-                            Log.e(
+-                                tag,
+-                                "Failed to update room's last message: ${e.message}"
+-                            )
+-                        }
+-                    }.addOnFailureListener { e ->
+-                        Log.e(tag, "Failed to update reactions: ${e.message}")
+-                    }
+-                }
+-            }
+-        } catch (e: Exception) {
+-            Log.e(tag, "Error updating reaction", e)
+-            throw e
+-        }
+-    }
+-
+-    suspend fun updateRoomLastMessage(
+-        roomId: String,
+-        lastMessage: String,
+-        senderId: String,
+-    ) {
+-        try {
+-            firestore.collection("rooms").document(roomId).update(
+-                mapOf(
+-                    "lastMessage" to lastMessage,
+-                    "lastMessageTimestamp" to Timestamp.now(),
+-                    "lastMessageSenderId" to senderId
+-                )
+-            ).await()
+-            Log.d(tag, "Room's last message updated successfully for roomId=$roomId")
+-        } catch (e: Exception) {
+-            logger(tag, "Error updating room's last message: $e")
+-            throw e
+-        }
+-    }
+-}*/
+\ No newline at end of file
++}
+\ No newline at end of file
+Index: app/src/main/java/com/pdm/vczap_o/home/data/HomeRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package com.pdm.vczap_o.home.data\r\n\r\nimport android.util.Log\r\nimport com.google.firebase.firestore.Filter\r\nimport com.google.firebase.firestore.FirebaseFirestore\r\nimport com.google.firebase.firestore.ListenerRegistration\r\nimport com.google.firebase.messaging.FirebaseMessaging\r\nimport com.pdm.vczap_o.core.domain.logger\r\nimport kotlinx.coroutines.tasks.await\r\nimport javax.inject.Inject\r\n\r\n\r\nclass HomeRepository @Inject constructor(\r\n    private val firestore: FirebaseFirestore,\r\n) {\r\n    val tag = \"HomeRepository\"\r\n\r\n    fun getUnreadMessages(\r\n        roomId: String,\r\n        otherUserId: String,\r\n        callBack: (value: Int) -> Unit,\r\n    ): ListenerRegistration {\r\n        val listener = firestore.collection(\"rooms\").document(roomId).collection(\"messages\")\r\n            .where(Filter.equalTo(\"read\", false)).where(Filter.equalTo(\"senderId\", otherUserId))\r\n            .addSnapshotListener { snapShot, error ->\r\n                if (error != null) {\r\n                    logger(tag, error.message.toString())\r\n                    return@addSnapshotListener\r\n                }\r\n                snapShot?.let {\r\n                    callBack(it.documents.size)\r\n                }\r\n            }\r\n        return listener\r\n    }\r\n\r\n    fun getFCMToken(callBack: (token: String) -> Unit) {\r\n        FirebaseMessaging.getInstance().token\r\n            .addOnCompleteListener { task ->\r\n                if (!task.isSuccessful) {\r\n                    Log.e(tag, \"Fetching FCM token failed\", task.exception)\r\n                    return@addOnCompleteListener\r\n                }\r\n                callBack(task.result)\r\n                Log.d(tag, \"FCM Token: ${task.result}\")\r\n            }\r\n    }\r\n\r\n    // ▼▼▼ MÉTODO ADICIONADO PARA A CRIPTOGRAFIA ▼▼▼\r\n    /**\r\n     * Busca o \"pacote de chaves públicas\" de um usuário no Firestore.\r\n     * Essas chaves são necessárias para iniciar uma sessão de chat segura.\r\n     * @param userId O ID do usuário cujas chaves serão buscadas.\r\n     * @return Um Map com os dados das chaves ou nulo se ocorrer um erro.\r\n     */\r\n    suspend fun getUserKeys(userId: String): Map<String, Any>? {\r\n        return try {\r\n            val document = firestore.collection(\"users\").document(userId)\r\n                .collection(\"keys\").document(\"publicKeys\")\r\n                .get().await()\r\n            document.data\r\n        } catch (e: Exception) {\r\n            logger(tag, \"Erro ao buscar chaves do usuário: ${e.message}\")\r\n            null\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/src/main/java/com/pdm/vczap_o/home/data/HomeRepository.kt b/app/src/main/java/com/pdm/vczap_o/home/data/HomeRepository.kt
+--- a/app/src/main/java/com/pdm/vczap_o/home/data/HomeRepository.kt	(revision 07430434fcc579cc08ec8c0e605f2e42222877a7)
++++ b/app/src/main/java/com/pdm/vczap_o/home/data/HomeRepository.kt	(date 1756239268680)
+@@ -55,11 +55,27 @@
+      */
+     suspend fun getUserKeys(userId: String): Map<String, Any>? {
+         return try {
++            Log.d(tag, "🔍 Buscando chaves do usuário: $userId")
+             val document = firestore.collection("users").document(userId)
+                 .collection("keys").document("publicKeys")
+                 .get().await()
+-            document.data
++            
++            if (document.exists()) {
++                val data = document.data
++                Log.d(tag, "✅ Chaves encontradas para $userId: ${data?.keys}")
++                Log.d(tag, "🔑 RegistrationId: ${data?.get("registrationId")}")
++                Log.d(tag, "🔑 IdentityKey presente: ${data?.containsKey("identityKey")}")
++                Log.d(tag, "🔑 PreKeys presente: ${data?.containsKey("preKeys")}")
++                Log.d(tag, "🔑 SignedPreKey presente: ${data?.containsKey("signedPreKey")}")
++                data
++            } else {
++                Log.e(tag, "❌ ERRO: Documento de chaves não existe para usuário $userId")
++                Log.e(tag, "📍 Caminho: users/$userId/keys/publicKeys")
++                null
++            }
+         } catch (e: Exception) {
++            Log.e(tag, "💥 ERRO ao buscar chaves do usuário $userId: ${e.message}")
++            Log.e(tag, "📍 Stack trace: ${e.stackTrace.contentToString()}")
+             logger(tag, "Erro ao buscar chaves do usuário: ${e.message}")
+             null
+         }
+Index: .idea/appInsightsSettings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/appInsightsSettings.xml b/.idea/appInsightsSettings.xml
+new file mode 100644
+--- /dev/null	(date 1756165465230)
++++ b/.idea/appInsightsSettings.xml	(date 1756165465230)
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="AppInsightsSettings">
++    <option name="tabSettings">
++      <map>
++        <entry key="Firebase Crashlytics">
++          <value>
++            <InsightsFilterSettings>
++              <option name="connection">
++                <ConnectionSetting>
++                  <option name="appId" value="com.pdm.vczap_o" />
++                  <option name="mobileSdkAppId" value="1:882700073778:android:b284e58a62e4dfc1e1352b" />
++                  <option name="projectId" value="vc-zapo" />
++                  <option name="projectNumber" value="882700073778" />
++                </ConnectionSetting>
++              </option>
++              <option name="signal" value="SIGNAL_UNSPECIFIED" />
++              <option name="timeIntervalDays" value="THIRTY_DAYS" />
++              <option name="visibilityType" value="ALL" />
++            </InsightsFilterSettings>
++          </value>
++        </entry>
++      </map>
++    </option>
++  </component>
++</project>
+\ No newline at end of file

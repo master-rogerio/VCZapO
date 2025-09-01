@@ -72,6 +72,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.pdm.vczap_o.core.domain.createFile
 import com.pdm.vczap_o.navigation.ImagePreviewScreen
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -328,12 +329,20 @@ fun CameraXScreen(
                                         context = context,
                                         imageCapture = imageCapture,
                                         onImageCaptured = { savedUri ->
+                                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                                            val otherUserId = if (roomId.contains("_")) {
+                                                val parts = roomId.split("_")
+                                                if (parts[0] == currentUserId) parts[1] else parts[0]
+                                            } else ""
+                                            
                                             val route = ImagePreviewScreen(
                                                 imageUri = savedUri.toString(),
                                                 roomId = roomId,
                                                 takenFromCamera = true,
                                                 profileUrl = profileUrl.orEmpty(),
-                                                recipientsToken = deviceToken
+                                                recipientsToken = deviceToken,
+                                                currentUserId = currentUserId,
+                                                otherUserId = otherUserId
                                             )
                                             navController.navigate(route)
                                         },

@@ -73,18 +73,36 @@ class AudioRecordingUseCase @Inject constructor(
                 senderId = senderId,
                 senderName = senderName,
                 audioUrl = audioUrl,
-                duration = duration
+                duration = duration,
+                otherUserId = otherUserId
             )
 
-            notificationUseCase(
-                recipientsToken = recipientsToken,
-                title = senderName,
-                body = content,
-                roomId = roomId,
-                recipientsUserId = otherUserId,
-                sendersUserId = senderId,
-                profileUrl = profileUrl
-            )
+            // Enviar notificação usando Firebase Functions
+            try {
+                com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.sendNotificationViaFunction(
+                    recipientUserId = otherUserId,
+                    title = senderName,
+                    body = content,
+                    roomId = roomId,
+                    senderUserId = senderId,
+                    profileUrl = profileUrl
+                )
+            } catch (notificationError: Exception) {
+                Log.w("AudioRecordingUseCase", "Falha ao enviar notificação via Firebase: ${notificationError.message}")
+                // Fallback: salvar no Firestore para processar depois
+                try {
+                    com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.saveNotificationToFirestore(
+                        recipientUserId = otherUserId,
+                        title = senderName,
+                        body = content,
+                        roomId = roomId,
+                        senderUserId = senderId,
+                        profileUrl = profileUrl
+                    )
+                } catch (fallbackError: Exception) {
+                    Log.e("AudioRecordingUseCase", "Falha no fallback de notificação: ${fallbackError.message}")
+                }
+            }
 
             // Clear the audio file reference
             audioFile = null

@@ -5,6 +5,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,11 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -47,15 +51,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
 import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SetUserDetailsDC
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
+@OptIn(ExperimentalComposeUiApi::class) // Adicionado para usar o KeyboardController
 @Composable
 fun SetUserDetailsScreen(
     navController: NavController,
@@ -73,18 +78,29 @@ fun SetUserDetailsScreen(
         profileUri = uri
     }
 
+    // Controlador do teclado e o gerenciador de foco
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
             .padding(top = 30.dp)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .clickable( //Adiciona o modifier 'clickable' para detectar toques na tela
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null // Remove o efeito visual do clique
+            ) {
+                keyboardController?.hide() // Esconde o teclado
+                focusManager.clearFocus()  // Remove o foco do campo de texto
+            },
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Let Others Recognize You Easily",
+            text = "Ajude os outros usuários  reconheçê-lo facilmente.",
             fontSize = 25.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -92,7 +108,7 @@ fun SetUserDetailsScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Set Your Username and Profile Picture",
+            text = "Defina seu Nome de Usuário e Imagem de perfil.",
             fontSize = 18.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
@@ -105,7 +121,7 @@ fun SetUserDetailsScreen(
             if (profileUri == null) {
                 Icon(
                     Icons.Default.AccountCircle,
-                    contentDescription = "Profile Picture",
+                    contentDescription = "Imagem de Perfil",
                     modifier = Modifier
                         .clip(CircleShape)
                         .size(200.dp)
@@ -114,7 +130,7 @@ fun SetUserDetailsScreen(
                 )
             } else {
                 AsyncImage(
-                    model = profileUri, contentDescription = "Selected image",
+                    model = profileUri, contentDescription = "Selecione a Imagem",
                     modifier = Modifier
                         .clip(CircleShape)
                         .size(200.dp)
@@ -126,7 +142,7 @@ fun SetUserDetailsScreen(
         }
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Choose a profile picture",
+            text = "Escolha a Imagem de Perfil",
             modifier = Modifier.clickable { imagePickerLauncher.launch("image/*") })
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -139,6 +155,7 @@ fun SetUserDetailsScreen(
                 keyboardType = KeyboardType.Text,
                 capitalization = KeyboardCapitalization.Sentences
             ),
+            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.LightGray, shape = MaterialTheme.shapes.medium)
@@ -153,7 +170,7 @@ fun SetUserDetailsScreen(
                 ) {
                     if (username.isEmpty()) {
                         Text(
-                            text = "Username",
+                            text = "Nome de Usuário.",
                             color = Color.Black
                         )
                     }
@@ -167,7 +184,7 @@ fun SetUserDetailsScreen(
         // Save Button
         Button(onClick = {
             if (username.isBlank()) {
-                showToast(context, "Username cannot be empty")
+                showToast(context, "Usuário não pode ficar em branco.")
                 return@Button
             }
 
