@@ -2,6 +2,7 @@
 
 package com.pdm.vczap_o.group.data
 
+import android.util.Log
 import com.pdm.vczap_o.group.data.model.Group
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FieldValue
@@ -21,15 +22,12 @@ class GroupRepository @Inject constructor(
      * Cria um novo grupo no Firestore.
      * Gera um ID único para o novo grupo antes de salvá-lo.
      */
-    suspend fun createGroup(group: Group): Result<String> {
+    suspend fun createGroup(groupData: Map<String, Any>): Result<String> {
         return try {
-            // 1. Gera uma referência para um novo documento, obtendo um ID único.
-            val newGroupRef = groupsCollection.document()
-            // 2. Cria uma cópia do objeto 'group', agora com o ID gerado.
-            val groupWithId = group.copy(id = newGroupRef.id)
-            // 3. Salva o grupo completo (com ID) no Firestore.
-            newGroupRef.set(groupWithId).await()
-            Result.success(newGroupRef.id) // Retorna o ID do grupo
+            // We now use the map directly, which doesn't contain the 'id' field.
+            val documentReference = firestore.collection("groups").add(groupData).await()
+
+            Result.success(documentReference.id)
         } catch (e: Exception) {
             Result.failure(e)
         }

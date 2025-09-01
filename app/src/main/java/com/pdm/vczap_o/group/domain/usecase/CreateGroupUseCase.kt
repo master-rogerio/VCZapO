@@ -3,27 +3,27 @@
 package com.pdm.vczap_o.group.domain.usecase
 
 import com.pdm.vczap_o.group.data.GroupRepository
-import com.pdm.vczap_o.group.data.model.Group
+import com.google.firebase.auth.FirebaseAuth
 import javax.inject.Inject
 
 class CreateGroupUseCase @Inject constructor(
-    private val repository: GroupRepository
+    private val repository: GroupRepository,
+    private val auth: FirebaseAuth
 ) {
-    /**
-     * Invoca o caso de uso para criar um novo grupo.
-     * O repositório será responsável por gerar o ID do grupo.
-     */
     suspend operator fun invoke(name: String, memberIds: List<String>): Result<String> {
-        return try {
-            val group = Group(
-                name = name,
-                createdBy = memberIds.firstOrNull() ?: "",
-                members = memberIds.associateWith { false }
-            )
-            val result = repository.createGroup(group)
-            result.map { group.id } // Retorna o ID do grupo criado
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        val currentUserId = auth.currentUser?.uid
+            ?: return Result.failure(Exception("User not authenticated"))
+
+        // CORRECTION: Instead of creating a full Group object, we create a Map.
+        // This ensures the problematic 'id' field is NOT sent to Firestore.
+        val groupData = mapOf(
+            "name" to name,
+            "createdBy" to currentUserId,
+            // Create the initial members map, ready to hold key data later.
+            "members" to memberIds.associateWith { mapOf<String, Any>() }
+        )
+
+        // The repository will now receive a Map, not a Group object.
+        return repository.createGroup(groupData)
     }
 }

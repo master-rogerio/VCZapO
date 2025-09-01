@@ -77,8 +77,11 @@ object AppModule {
     // --- Providers de Casos de Uso (UseCases) ---
     @Provides
     @Singleton
-    fun providesCreateGroupUseCase(groupRepository: GroupRepository): CreateGroupUseCase =
-        CreateGroupUseCase(groupRepository)
+    fun providesCreateGroupUseCase(
+        groupRepository: GroupRepository,
+        auth: FirebaseAuth
+    ): CreateGroupUseCase =
+        CreateGroupUseCase(groupRepository, auth)
 
     @Provides
     @Singleton

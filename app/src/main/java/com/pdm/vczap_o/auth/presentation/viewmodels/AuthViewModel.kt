@@ -8,19 +8,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.auth.api.identity.Identity
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.pdm.vczap_o.auth.data.AuthRepository
-import com.pdm.vczap_o.auth.data.BiometricAuthenticator
 import com.pdm.vczap_o.auth.data.GoogleAuthUiClient
-import com.pdm.vczap_o.auth.domain.GetUserDataUseCase
-import com.pdm.vczap_o.auth.domain.GetUserIdUseCase
-import com.pdm.vczap_o.auth.domain.IsUserLoggedInUseCase
-import com.pdm.vczap_o.auth.domain.LoginUseCase
-import com.pdm.vczap_o.auth.domain.LogoutUseCase
-import com.pdm.vczap_o.auth.domain.ResetPasswordUseCase
-import com.pdm.vczap_o.auth.domain.SignUpUseCase
-import com.pdm.vczap_o.auth.domain.UpdateUserDocumentUseCase
+import com.pdm.vczap_o.auth.domain.*
 import com.pdm.vczap_o.core.model.NewUser
 import com.pdm.vczap_o.core.state.CurrentUser
 import com.pdm.vczap_o.cripto.SignalProtocolManager
@@ -28,10 +21,7 @@ import com.pdm.vczap_o.home.data.RoomsCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 @HiltViewModel
@@ -73,6 +63,26 @@ class AuthViewModel @Inject constructor(
         data class Error(val message: String) : KeyGenerationState()
     }
 
+    private fun handleSuccessfulLogin(firebaseUser: FirebaseUser) {
+        viewModelScope.launch {
+            try {
+                // ETAPA 1: Garante que o documento do usuário exista no Firestore.
+                checkAndCreateUserDocument(firebaseUser)
+
+                // ETAPA 2: Gera e publica as chaves de criptografia.
+                generateAndPublishKeys(firebaseUser.uid)
+
+                // ETAPA 3: Somente agora o login é considerado completo.
+                _authState.value = true
+                _message.value = "Login bem-sucedido!"
+            } catch (e: Exception) {
+                _message.value = "Erro na configuração pós-login: ${e.message}"
+                logout() // Desloga se a configuração falhar
+            } finally {
+                _isLoggingIn.value = false
+            }
+        }
+    }
 
     fun onGoogleSignInResult(intent: Intent) {
         _isLoggingIn.value = true
@@ -275,6 +285,62 @@ class AuthViewModel @Inject constructor(
     fun isUserLoggedIn(): Boolean {
         return isUserLoggedInUseCase()
     }
+
+    private suspend fun generateAndPublishKeys(userId: String) {
+        if (authRepository.checkIfKeysExist(userId)) {
+            Log.d("AuthViewModel", "Chaves de segurança já existem para o usuário $userId.")
+            return
+        }
+
+        Log.d("AuthViewModel", "Gerando e publicando chaves para o usuário $userId...")
+        val signalManager = SignalProtocolManager(application, userId)
+        signalManager.initializeKeys()
+
+        val identityKey = Base64.encodeToString(signalManager.getPublicIdentityKey(), Base64.NO_WRAP)
+        val registrationId = signalManager.getRegistrationId()
+        val preKeys = signalManager.getPreKeysForPublication().map {
+            mapOf(
+                "keyId" to it.id,
+                "publicKey" to Base64.encodeToString(it.keyPair.publicKey.serialize(), Base64.NO_WRAP)
+            )
+        }
+        val signedPreKeyRecord = signalManager.getSignedPreKeyForPublication()
+
+        if (signedPreKeyRecord != null) {
+            val signedPreKey = mapOf(
+                "keyId" to signedPreKeyRecord.id,
+                "publicKey" to Base64.encodeToString(signedPreKeyRecord.keyPair.publicKey.serialize(), Base64.NO_WRAP),
+                "signature" to Base64.encodeToString(signedPreKeyRecord.signature, Base64.NO_WRAP)
+            )
+            // Esta chamada deve usar .update() no repositório.
+            authRepository.publishUserKeys(userId, identityKey, registrationId, preKeys, signedPreKey).getOrThrow()
+            Log.d("AuthViewModel", "Chaves publicadas com sucesso.")
+        } else {
+            throw IllegalStateException("Falha ao gerar a chave pré-assinada.")
+        }
+    }
+
+    private suspend fun checkAndCreateUserDocument(firebaseUser: FirebaseUser) {
+        val userResult = getUserDataUseCase(firebaseUser.uid)
+        if (userResult.isFailure || userResult.getOrNull() == null) {
+            // Documento não existe, vamos criá-lo.
+            Log.w("AuthViewModel", "Documento para ${firebaseUser.uid} não existe. Criando...")
+            val newUser = NewUser(
+                userId = firebaseUser.uid,
+                username = firebaseUser.displayName ?: "Usuário",
+                profileUrl = firebaseUser.photoUrl?.toString() ?: "",
+                deviceToken = "",
+                email = firebaseUser.email ?: ""
+            )
+            // Esta chamada deve usar .set() no repositório para garantir a criação.
+            authRepository.saveUserProfile(newUser).getOrThrow()
+            Log.d("AuthViewModel", "Documento do usuário criado com sucesso.")
+        } else {
+            Log.d("AuthViewModel", "Documento do usuário ${firebaseUser.uid} já existe.")
+        }
+    }
+
+
 }
 
 /*

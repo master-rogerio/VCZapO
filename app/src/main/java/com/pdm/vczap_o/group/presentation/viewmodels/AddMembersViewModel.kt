@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -138,27 +139,32 @@ class AddMembersViewModel @Inject constructor(
                 val groupKey = groupSessionManager.getGroupKey(groupId)
                     ?: throw IllegalStateException("Admin não possui a chave do grupo localmente.")
 
-                newMemberIds.forEach { memberId ->
-                    val encryptedMessage = cryptoService.encryptMessage(
-                        currentUserId = adminId,
-                        remoteUserId = memberId,
-                        message = EnhancedCryptoUtils.encode(groupKey)
-                    )
 
-                    if (encryptedMessage != null) {
-
-                        val encryptedKeyBase64 = EnhancedCryptoUtils.encode(encryptedMessage.content)
-                        val messageType = encryptedMessage.type
-
-                        val memberKeyData = mapOf(
-                            "encryptedKey" to encryptedKeyBase64,
-                            "keySenderId" to adminId,
-                            "keyEncryptionType" to messageType
+                val distributionJobs = newMemberIds.map { memberId ->
+                    launch { // Cria uma nova corrotina para cada membro
+                        val encryptedMessage = cryptoService.encryptMessage(
+                            currentUserId = adminId,
+                            remoteUserId = memberId,
+                            message = EnhancedCryptoUtils.encode(groupKey)
                         )
 
-                        groupRepository.updateMemberData(groupId, memberId, memberKeyData)
+                        if (encryptedMessage != null) {
+                            val encryptedKeyBase64 = EnhancedCryptoUtils.encode(encryptedMessage.content)
+                            val messageType = encryptedMessage.type
+                            val memberKeyData = mapOf(
+                                "encryptedKey" to encryptedKeyBase64,
+                                "keySenderId" to adminId,
+                                "keyEncryptionType" to messageType
+                            )
+                            groupRepository.updateMemberData(groupId, memberId, memberKeyData)
+                        }
                     }
                 }
+
+
+                distributionJobs.joinAll()
+
+
                 _uiState.update { it.copy(isLoading = false, membersAdded = true, addedMembersCount = newMemberIds.size) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Erro ao adicionar membros: ${e.message}") }

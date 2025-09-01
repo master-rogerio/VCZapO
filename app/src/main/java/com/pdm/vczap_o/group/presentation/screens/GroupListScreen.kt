@@ -169,8 +169,8 @@ fun GroupItem(
                 )
             }
 
-            // Indicador de admin se aplicável
-            if (group.members.any { it.value }) {
+            // Verifica se ALGUM membro no mapa tem o campo "isAdmin" como true.
+            if (group.members.any { (it.value["isAdmin"] as? Boolean) == true }) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Admin",

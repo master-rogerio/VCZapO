@@ -17,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -94,7 +95,7 @@ class CreateGroupViewModel @Inject constructor(
     fun createGroup(groupName: String) {
         val currentState = _uiState.value
 
-        if (groupName.isBlank()) {
+        if (groupName.isBlank() || _uiState.value.selectedUsers.isEmpty()) {
             _uiState.update { it.copy(errorMessage = "Nome do grupo é obrigatório") }
             return
         }
@@ -108,34 +109,45 @@ class CreateGroupViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
                 val currentUserId = getUserIdUseCase() ?: throw Exception("Usuário não autenticado")
-                val memberIds = currentState.selectedUsers.map { it.userId }
+                val memberIds = _uiState.value.selectedUsers.map { it.userId }
                 val allMemberIds = (memberIds + currentUserId).distinct()
 
-                createGroupUseCase(name = groupName, memberIds = allMemberIds).onSuccess { groupId ->
+                val result = createGroupUseCase(name = groupName, memberIds = allMemberIds)
+
+                result.onSuccess { groupId ->
+                    // ================== VALIDAÇÃO CRÍTICA AQUI ==================
+                    if (groupId.isNullOrBlank()) {
+                        // Se chegarmos aqui, o problema é 100% no CreateGroupUseCase,
+                        // que não está retornando um ID válido.
+                        throw IllegalStateException("CreateGroupUseCase retornou um ID de grupo nulo ou vazio.")
+                    }
+                    // ==========================================================
+
                     try {
                         val groupKey = groupSessionManager.generateGroupKey()
-
-                        allMemberIds.forEach { memberId ->
-                            val encryptedMessage = cryptoService.encryptMessage(
-                                currentUserId = currentUserId,
-                                remoteUserId = memberId,
-                                message = EnhancedCryptoUtils.encode(groupKey)
-                            )
-
-                            if (encryptedMessage != null) {
-                                // MUDANÇA 2: Acessando .content e .type diretamente
-                                val encryptedKeyBase64 = EnhancedCryptoUtils.encode(encryptedMessage.content)
-                                val messageType = encryptedMessage.type
-
-                                val memberKeyData = mapOf(
-                                    "encryptedKey" to encryptedKeyBase64,
-                                    "keySenderId" to currentUserId,
-                                    "keyEncryptionType" to messageType
+                        val distributionJobs = allMemberIds.map { memberId ->
+                            launch {
+                                val encryptedMessage = cryptoService.encryptMessage(
+                                    currentUserId = currentUserId,
+                                    remoteUserId = memberId,
+                                    message = EnhancedCryptoUtils.encode(groupKey)
                                 )
-                                // MUDANÇA 3: Usando o groupRepository injetado
-                                groupRepository.updateMemberData(groupId, memberId, memberKeyData)
+
+                                if (encryptedMessage != null) {
+                                    val encryptedKeyBase64 = EnhancedCryptoUtils.encode(encryptedMessage.content)
+                                    val messageType = encryptedMessage.type
+                                    val memberKeyData = mapOf(
+                                        "encryptedKey" to encryptedKeyBase64,
+                                        "keySenderId" to currentUserId,
+                                        "keyEncryptionType" to messageType
+                                    )
+                                    // A chamada que estava quebrando
+                                    groupRepository.updateMemberData(groupId, memberId, memberKeyData)
+                                }
                             }
                         }
+
+                        distributionJobs.joinAll()
 
                         groupSessionManager.saveGroupKey(groupId, groupKey)
                         _uiState.update { it.copy(isLoading = false, groupCreated = true, createdGroupId = groupId) }

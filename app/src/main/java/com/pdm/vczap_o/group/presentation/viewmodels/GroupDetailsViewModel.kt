@@ -2,6 +2,7 @@ package com.pdm.vczap_o.group.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
 import com.pdm.vczap_o.auth.domain.GetUserDataUseCase
 import com.pdm.vczap_o.auth.domain.GetUserIdUseCase
 import com.pdm.vczap_o.core.model.User
@@ -20,6 +21,7 @@ class GroupDetailsViewModel @Inject constructor(
     private val getGroupDetailsUseCase: GetGroupDetailsUseCase,
     private val removeMemberUseCase: RemoveMemberUseCase,
     private val getUserIdUseCase: GetUserIdUseCase,
+    private val auth: FirebaseAuth,
     private val getUserDataUseCase: GetUserDataUseCase
 ) : ViewModel() {
 
@@ -110,10 +112,12 @@ class GroupDetailsViewModel @Inject constructor(
     }
 
     fun isCurrentUserAdmin(): Boolean {
-        val currentUserId = getUserIdUseCase() ?: return false
-        val currentGroup = _uiState.value.currentGroup ?: return false
+        val currentUserId = auth.currentUser?.uid ?: return false
+        val group = uiState.value.currentGroup ?: return false
+        val currentUserMemberData = group.members[currentUserId] ?: return false
 
-        return currentGroup.members[currentUserId] == true
+
+        return (currentUserMemberData["isAdmin"] as? Boolean) == true
     }
 
     fun canRemoveMember(userId: String): Boolean {
@@ -131,20 +135,22 @@ class GroupDetailsViewModel @Inject constructor(
     }
 
     fun getAdmins(): List<User> {
-        val currentGroup = _uiState.value.currentGroup ?: return emptyList()
-        val members = _uiState.value.groupMembers
+        val group = uiState.value.currentGroup ?: return emptyList()
+        val adminIds = group.members.filter {
 
-        return members.filter { user ->
-            currentGroup.members[user.userId] == true
-        }
+            (it.value["isAdmin"] as? Boolean) == true
+        }.keys
+
+        return uiState.value.groupMembers.filter { adminIds.contains(it.userId) }
     }
 
     fun getRegularMembers(): List<User> {
-        val currentGroup = _uiState.value.currentGroup ?: return emptyList()
-        val members = _uiState.value.groupMembers
+        val group = uiState.value.currentGroup ?: return emptyList()
+        val regularMemberIds = group.members.filter {
 
-        return members.filter { user ->
-            currentGroup.members[user.userId] != true
-        }
+            (it.value["isAdmin"] as? Boolean) == false
+        }.keys
+
+        return uiState.value.groupMembers.filter { regularMemberIds.contains(it.userId) }
     }
 }
