@@ -92,7 +92,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, navController: NavController) {
                 )
             }
             item { AppearanceSection(settingsState, viewModel) }
-            item { NotificationTestSection() }
+           // item { NotificationTestSection() }
 //            item { NotificationsSection(settingsState, viewModel) }
 //            item { PrivacySection(settingsState, viewModel) }
 //            item { AboutSection(settingsState, onNavigateToTerms, onContactSupport) }
