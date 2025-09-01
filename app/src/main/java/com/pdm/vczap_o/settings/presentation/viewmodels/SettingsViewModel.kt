@@ -41,12 +41,18 @@ class SettingsViewModel @Inject constructor(
 
     fun updateThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
-            updateThemeModeUseCase(
-                currentSettings = _settingsState.value,
-                newThemeMode = mode
-            )
-            // Update local state for immediate UI feedback
-            _settingsState.update { it.copy(themeMode = mode) }
+            try {
+                android.util.Log.d("SettingsViewModel", "Atualizando tema para: $mode")
+                updateThemeModeUseCase(
+                    currentSettings = _settingsState.value,
+                    newThemeMode = mode
+                )
+                // Update local state for immediate UI feedback
+                _settingsState.update { it.copy(themeMode = mode) }
+                android.util.Log.d("SettingsViewModel", "Tema atualizado com sucesso: ${_settingsState.value.themeMode}")
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsViewModel", "Erro ao atualizar tema: ${e.message}", e)
+            }
         }
     }
 

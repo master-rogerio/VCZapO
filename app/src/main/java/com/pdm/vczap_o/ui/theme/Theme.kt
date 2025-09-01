@@ -27,11 +27,16 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun VCZapoTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
+    themeMode: com.pdm.vczap_o.core.model.ThemeMode = com.pdm.vczap_o.core.model.ThemeMode.SYSTEM,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
+    val darkTheme = when (themeMode) {
+        com.pdm.vczap_o.core.model.ThemeMode.DARK -> true
+        com.pdm.vczap_o.core.model.ThemeMode.LIGHT -> false
+        com.pdm.vczap_o.core.model.ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
+
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current

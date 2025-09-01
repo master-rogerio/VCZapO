@@ -32,8 +32,15 @@ class SettingsRepository @Inject constructor(
             }
         }
         .map { preferences ->
+            val themeModeOrdinal = preferences[THEME_MODE] ?: ThemeMode.SYSTEM.ordinal
+            val themeMode = when (themeModeOrdinal) {
+                ThemeMode.LIGHT.ordinal -> ThemeMode.LIGHT
+                ThemeMode.DARK.ordinal -> ThemeMode.DARK
+                else -> ThemeMode.SYSTEM
+            }
+            
             SettingsState(
-                themeMode = ThemeMode.entries[preferences[THEME_MODE] ?: ThemeMode.SYSTEM.ordinal],
+                themeMode = themeMode,
                 fontSize = preferences[FONT_SIZE] ?: 16,
                 notificationsEnabled = preferences[NOTIFICATIONS_ENABLED] != false
             )

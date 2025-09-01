@@ -38,7 +38,7 @@ class MainActivity : FragmentActivity() {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.settingsState.collectAsStateWithLifecycle()
 
-            VCZapoTheme(isSystemInDarkTheme(), true) {
+            VCZapoTheme(themeMode = settingsState.themeMode) {
                 ChatAppNavigation()
             }
         }

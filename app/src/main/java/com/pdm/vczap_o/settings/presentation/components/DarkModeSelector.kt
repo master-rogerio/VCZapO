@@ -32,8 +32,9 @@ fun DarkModeSelector(
     onModeSelected: (ThemeMode) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedMode by remember { mutableStateOf(currentMode) }
+    var selectedMode by remember(currentMode) { mutableStateOf(currentMode) }
     val options = listOf("Padrão do sistema", "Claro", "Escuro")
+    val themeOptions = listOf(ThemeMode.SYSTEM, ThemeMode.LIGHT, ThemeMode.DARK)
 
     Column(
         modifier = Modifier
@@ -56,7 +57,11 @@ fun DarkModeSelector(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    options[currentMode.ordinal],
+                    text = when (currentMode) {
+                        ThemeMode.SYSTEM -> "Padrão do sistema"
+                        ThemeMode.LIGHT -> "Claro"
+                        ThemeMode.DARK -> "Escuro"
+                    },
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyMedium,
                 )
@@ -69,19 +74,21 @@ fun DarkModeSelector(
                 text = {
                     Column {
                         options.forEachIndexed { index, selectionOption ->
+                            val themeMode = themeOptions.getOrNull(index) ?: ThemeMode.SYSTEM
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
                                     .clickable {
-                                        selectedMode = ThemeMode.entries[index]
+                                        selectedMode = themeMode
                                     }
                             ) {
                                 RadioButton(
-                                    selected = index == ThemeMode.entries[selectedMode.ordinal].ordinal,
-                                    onClick = { selectedMode = ThemeMode.entries[index] })
+                                    selected = selectedMode == themeMode,
+                                    onClick = { selectedMode = themeMode }
+                                )
                                 Text(
-                                    selectionOption, modifier = Modifier
-                                        .fillMaxWidth()
+                                    text = selectionOption,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
@@ -89,6 +96,7 @@ fun DarkModeSelector(
                 },
                 confirmButton = {
                     TextButton(onClick = {
+                        android.util.Log.d("DarkModeSelector", "Selecionando modo: $selectedMode")
                         onModeSelected(selectedMode)
                         expanded = !expanded
                     }) {
