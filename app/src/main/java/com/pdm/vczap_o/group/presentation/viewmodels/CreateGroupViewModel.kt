@@ -81,10 +81,10 @@ class CreateGroupViewModel @Inject constructor(
         _uiState.update { it.copy(selectedUsers = currentSelectedUsers) }
     }
 
-    fun createGroup() {
+    fun createGroup(groupName: String) {
         val currentState = _uiState.value
         
-        if (currentState.groupName.isBlank()) {
+        if (groupName.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Nome do grupo é obrigatório") }
             return
         }
@@ -143,8 +143,7 @@ class CreateGroupViewModel @Inject constructor(
             allUsers
         } else {
             allUsers.filter { user ->
-                user.name.lowercase().contains(searchText) ||
-                user.email.lowercase().contains(searchText)
+                user.username.lowercase().contains(searchText)
             }
         }
     }

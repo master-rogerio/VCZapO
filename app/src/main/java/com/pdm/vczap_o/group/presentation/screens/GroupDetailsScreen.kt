@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -250,7 +251,7 @@ fun MemberItem(
         // Avatar do usuário
         Surface(
             modifier = Modifier.size(40.dp),
-            shape = MaterialTheme.shapes.circular,
+            shape = CircleShape,
             color = MaterialTheme.colorScheme.secondaryContainer
         ) {
             Box(
@@ -272,7 +273,7 @@ fun MemberItem(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = user.name,
+                text = user.username,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )

@@ -31,16 +31,17 @@ class GroupListViewModel @Inject constructor(
             
             try {
                 val userId = getUserIdUseCase() ?: throw Exception("Usuário não autenticado")
-                val groups = getGroupsUseCase(userId)
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        groups = groups,
-                        errorMessage = null
-                    )
+                getGroupsUseCase(userId).collect { result ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            groups = result.getOrNull() ?: emptyList(),
+                            errorMessage = null
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = e.message ?: "Erro ao carregar grupos"

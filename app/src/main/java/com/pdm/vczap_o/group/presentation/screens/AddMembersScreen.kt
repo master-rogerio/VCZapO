@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.pdm.vczap_o.core.model.User
+import com.pdm.vczap_o.core.model.NewUser
 import com.pdm.vczap_o.group.presentation.viewmodels.AddMembersViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,92 +119,6 @@ fun AddMembersScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun UserSelectionItem(
-    user: User,
-    isSelected: Boolean,
-    onUserSelected: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clickable { onUserSelected() },
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 4.dp else 1.dp
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar do usuário
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = MaterialTheme.shapes.circular,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            // Informações do usuário
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isSelected) 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onSurface
-                )
-                
-                Spacer(modifier = Modifier.height(2.dp))
-                
-                Text(
-                    text = user.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isSelected) 
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    else 
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            // Checkbox de seleção
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = { onUserSelected() },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = MaterialTheme.colorScheme.primary,
-                    uncheckedColor = MaterialTheme.colorScheme.outline
-                )
-            )
         }
     }
 }

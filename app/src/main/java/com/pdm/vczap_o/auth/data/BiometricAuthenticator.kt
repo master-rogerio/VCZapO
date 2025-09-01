@@ -1,7 +1,6 @@
 package com.pdm.vczap_o.auth.data
 
-import android.os.Build
-import androidx.biometric.BiometricManager
+ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt

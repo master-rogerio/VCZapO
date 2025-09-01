@@ -1,6 +1,7 @@
 package com.pdm.vczap_o.group.presentation.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -95,7 +96,7 @@ fun UserAvatar(
     Box {
         Surface(
             modifier = Modifier.size(size.dp),
-            shape = MaterialTheme.shapes.circular,
+            shape = CircleShape,
             color = MaterialTheme.colorScheme.secondaryContainer
         ) {
             Box(
@@ -115,7 +116,7 @@ fun UserAvatar(
                 modifier = Modifier
                     .size(12.dp)
                     .align(Alignment.BottomEnd),
-                shape = MaterialTheme.shapes.circular,
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary
             ) {}
         }

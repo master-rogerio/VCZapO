@@ -4,6 +4,7 @@ package com.pdm.vczap_o.group.data
 
 import com.pdm.vczap_o.group.data.model.Group
 import com.google.firebase.firestore.FirebaseFirestore
+import com.pdm.vczap_o.group.domain.usecase.GroupDetails
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -84,4 +85,29 @@ class GroupRepository @Inject constructor(
     suspend fun removeMember(groupId: String, userId: String): Result<Unit> {
         return Result.success(Unit)
     }
+
+    fun getGroupDetailsWithMembers(groupId: String): Flow<Result<GroupDetails>> = callbackFlow {
+        val subscription = groupsCollection.document(groupId).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                trySend(Result.failure(error))
+                return@addSnapshotListener
+            }
+            if (snapshot != null && snapshot.exists()) {
+                val group = snapshot.toObject(Group::class.java)
+                if (group != null) {
+                    // Aqui você precisaria buscar os membros do grupo
+                    // Por enquanto, retorna lista vazia
+                    val groupDetails = GroupDetails(group, emptyList())
+                    trySend(Result.success(groupDetails))
+                } else {
+                    trySend(Result.failure(Exception("Falha ao converter dados do grupo.")))
+                }
+            } else {
+                trySend(Result.failure(Exception("Grupo não encontrado.")))
+            }
+        }
+        awaitClose { subscription.remove() }
+    }
+
+
 }

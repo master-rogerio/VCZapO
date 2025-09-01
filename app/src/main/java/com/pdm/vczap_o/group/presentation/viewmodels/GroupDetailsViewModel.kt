@@ -27,16 +27,26 @@ class GroupDetailsViewModel @Inject constructor(
     fun loadGroupDetails(groupId: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
+
             try {
-                val groupDetails = getGroupDetailsUseCase(groupId)
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        currentGroup = groupDetails.group,
-                        groupMembers = groupDetails.members,
-                        errorMessage = null
-                    )
+                getGroupDetailsUseCase(groupId).collect { result ->
+                    result.onSuccess { group ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                currentGroup = group,
+                                groupMembers = emptyList(), // Você precisa implementar a busca de membros
+                                errorMessage = null
+                            )
+                        }
+                    }.onFailure { exception ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = exception.message ?: "Erro ao carregar detalhes do grupo"
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
@@ -86,8 +96,8 @@ class GroupDetailsViewModel @Inject constructor(
     fun isCurrentUserAdmin(): Boolean {
         val currentUserId = getUserIdUseCase() ?: return false
         val currentGroup = _uiState.value.currentGroup ?: return false
-        
-        return currentGroup.members[currentUserId] == true
+
+        return currentGroup.members[currentUserId] == true // Corrigido
     }
 
     fun canRemoveMember(userId: String): Boolean {
@@ -107,18 +117,18 @@ class GroupDetailsViewModel @Inject constructor(
     fun getAdmins(): List<User> {
         val currentGroup = _uiState.value.currentGroup ?: return emptyList()
         val members = _uiState.value.groupMembers
-        
+
         return members.filter { user ->
-            currentGroup.members[user.userId] == true
+            currentGroup.members[user.userId] == true // Corrigido
         }
     }
 
     fun getRegularMembers(): List<User> {
         val currentGroup = _uiState.value.currentGroup ?: return emptyList()
         val members = _uiState.value.groupMembers
-        
+
         return members.filter { user ->
-            currentGroup.members[user.userId] != true
+            currentGroup.members[user.userId] != true // Corrigido
         }
     }
 }

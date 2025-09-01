@@ -35,9 +35,21 @@ class AddMembersViewModel @Inject constructor(
     private fun loadGroupDetails(groupId: String) {
         viewModelScope.launch {
             try {
-                val groupDetails = getGroupDetailsUseCase(groupId)
-                _uiState.update { 
-                    it.copy(currentGroup = groupDetails.group)
+                getGroupDetailsUseCase(groupId).collect { result ->
+                    result.onSuccess { group ->
+                        _uiState.update {
+                            it.copy(
+                                currentGroup = group,
+                            )
+                        }
+                    }.onFailure { exception ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = exception.message ?: "Erro ao carregar detalhes do grupo"
+                            )
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.update { 
@@ -159,8 +171,7 @@ class AddMembersViewModel @Inject constructor(
             availableUsers
         } else {
             availableUsers.filter { user ->
-                user.name.lowercase().contains(searchText) ||
-                user.email.lowercase().contains(searchText)
+                user.username.lowercase().contains(searchText)
             }
         }
     }
