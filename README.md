@@ -27,6 +27,7 @@ Repositório para o quinto trabalho da disciplina Programação para Dispositivo
 * [ 📊 Diagrama de Arquitetura do Sistema](#-diagrama-de-arquitetura-do-sistema)
 * [ 📖 Sobre o Aplicativo](#-sobre-o-aplicativo)
 * [ ✅ Funcionalidades](#-funcionalidades)
+* [ 📸 Capturas de Tela do Aplicativo V.C. Zap-O](#-capturas-de-tela-do-aplicativo-vc-zap-o) 
 * [ 🛠️ Tecnologias Utilizadas](#%EF%B8%8F-tecnologias-utilizadas)
 * [ 🚀 Como Executar o Projeto](#-como-executar-o-projeto)
 * [ 🔮 Melhorias Futuras](#-melhorias-futuras)
@@ -134,6 +135,13 @@ Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza u
 [Retornar ao 🧾Índice](#-%C3%ADndice)
 
 <br>
+
+## 📸 Capturas de Tela do Aplicativo V.C. Zap-O
+
+Veja o Video com o funcionamento do Aplicativo V.C. Zap-O:
+
+
+[Retornar ao 🧾Índice](#-%C3%ADndice)
 
 ## 🚀 Como Executar o Projeto
 
