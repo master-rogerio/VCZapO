@@ -116,6 +116,6 @@ fun DemoMessage(
 }
 
 fun formatMessageTime(date: Date): String {
-    val formater = SimpleDateFormat("h:m a", Locale.US)
-    return formater.format(date).lowercase()
+    val formater = SimpleDateFormat("HH:mm", Locale("pt", "BR"))
+    return formater.format(date)
 }

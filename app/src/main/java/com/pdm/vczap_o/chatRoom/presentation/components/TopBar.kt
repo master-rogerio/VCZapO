@@ -65,10 +65,10 @@ fun HeaderBar(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val baseModifier = Modifier
-        .height(80.dp)
+        .height(110.dp)
         .fillMaxWidth()
         .background(MaterialTheme.colorScheme.primaryContainer)
-        .padding(top = 20.dp)
+        .padding(top = 30.dp)
 
     // Se a busca estiver ativa, mostra a barra de busca.
     if (isSearchActive) {

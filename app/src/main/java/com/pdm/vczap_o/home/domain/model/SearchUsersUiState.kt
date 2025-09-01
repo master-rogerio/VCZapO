@@ -6,5 +6,5 @@ data class SearchUsersUiState(
     val searchText: String = "",
     val filteredUsers: List<User> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String = "Search users",
+    val errorMessage: String = "Encontre usuários",
 )

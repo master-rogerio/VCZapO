@@ -93,7 +93,7 @@ fun ChatListItem(
         Row(
             modifier = Modifier
                 .padding(vertical = 10.dp, horizontal = 8.dp)
-                .padding(end = 10.dp)
+                .padding(end = 10.dp, start = 10.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

@@ -63,7 +63,7 @@ fun SearchUsersScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 20.dp),
+                .padding(top = 20.dp).height(100.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = { navController.popBackStack() }) {
@@ -98,7 +98,7 @@ fun SearchUsersScreen(
                     ) {
                         if (uiState.searchText.isEmpty()) {
                             Text(
-                                text = "Search...",
+                                text = "Pesquisar...",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }

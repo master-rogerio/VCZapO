@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
@@ -318,11 +319,7 @@ fun ChatScreen(
         previousMessageCount = messages.size
     }
 
-    var showEmptyMessagesAnimation by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(500)
-        showEmptyMessagesAnimation = true
-    }
+    var showEmptyMessagesAnimation by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -331,7 +328,8 @@ fun ChatScreen(
                 username = username,
                 profileUrl = profileUrl,
                 deviceToken = deviceToken,
-            )
+
+                )
             HeaderBar(
                 userData = userData,
                 name = decodedUsername,
@@ -341,7 +339,7 @@ fun ChatScreen(
                 navController = navController,
                 chatOptionsList = listOf(
                     DropMenu(
-                        text = "View Profile",
+                        text = "Ver Perfil",
                         onClick = {
                             val userJson = Gson().toJson(userData)
                             navController.navigate(OtherProfileScreenDC(userJson)) {
@@ -379,7 +377,7 @@ fun ChatScreen(
                 isSearchActive = isSearchActive,
                 searchText = searchText,
                 onSearchTextChange = chatViewModel::onSearchTextChange,
-                onToggleSearch = chatViewModel::toggleSearch
+                onToggleSearch = chatViewModel::toggleSearch,
             )
 
         },
@@ -397,7 +395,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-        ){
+        ) {
             // ADICIONADO: A barra de mensagem fixada que aparece e desaparece suavemente
             AnimatedVisibility(
                 visible = pinnedMessage != null,
@@ -570,5 +568,6 @@ fun ChatScreen(
                 }
             }
         }
-    }
+
+}
 }

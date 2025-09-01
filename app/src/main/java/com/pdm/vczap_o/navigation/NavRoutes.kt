@@ -9,11 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 object AuthScreen
 
-/**
- * Represents the first screen shown when the app starts.
- */
-@Serializable
-object LoadingScreen
+// Removido: LoadingScreen não é mais necessário
 
 /**
  * Represents the main screen of the app.

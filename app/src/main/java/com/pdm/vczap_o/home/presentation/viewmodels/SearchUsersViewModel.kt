@@ -52,7 +52,7 @@ class SearchUsersViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             filteredUsers = users,
-                            errorMessage = if (users.isEmpty() && query.isNotEmpty()) "No users found" else "Search users"
+                            errorMessage = if (users.isEmpty() && query.isNotEmpty()) "Nenhum usuário encontrado" else "Encontre usuários"
                         )
                     }
                 }

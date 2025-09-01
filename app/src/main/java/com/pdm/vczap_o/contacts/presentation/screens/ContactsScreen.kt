@@ -52,7 +52,8 @@ fun ContactsScreen(
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (permissionGranted) {
             if (contacts.isEmpty()) {
-                Text("Nenhum contato encontrado.")
+                Text(text = "Nenhum contato encontrado.",
+                    color = MaterialTheme.colorScheme.onBackground)
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(contacts) { contact ->
@@ -62,7 +63,8 @@ fun ContactsScreen(
             }
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Permissão para ler contatos é necessária.")
+                Text("Permissão para ler contatos é necessária.",
+                    color = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.READ_CONTACTS) }) {
                     Text("Conceder Permissão")

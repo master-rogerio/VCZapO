@@ -14,7 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.pdm.vczap_o.LoadingScreen
+// Removido: LoadingScreen não é mais necessário
 import com.pdm.vczap_o.auth.presentation.screens.AuthScreen
 import com.pdm.vczap_o.auth.presentation.screens.SetUserDetailsScreen
 import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
@@ -47,16 +47,13 @@ fun ChatAppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = LoadingScreen,
+        startDestination = AuthScreen,
         modifier = Modifier.background(MaterialTheme.colorScheme.background)
     ) {
         composable<AuthScreen> {
             AuthScreen(navController, authViewModelInstance)
         }
 
-        composable<LoadingScreen> {
-            LoadingScreen(navController, authViewModelInstance)
-        }
 
         composable<MainScreen> {
             val args = it.toRoute<MainScreen>()

@@ -68,8 +68,8 @@ dependencies {
     //Datastore
     implementation(libs.androidx.datastore.preferences)
 
-    // Lottie animations
-    implementation(libs.lottie.compose)
+    // Lottie animations - REMOVIDO: Não usado mais
+    // implementation(libs.lottie.compose)
 
     // Google maps
     implementation(libs.play.services.location)

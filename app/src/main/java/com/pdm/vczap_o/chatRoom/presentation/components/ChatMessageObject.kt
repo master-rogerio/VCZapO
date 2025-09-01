@@ -100,17 +100,17 @@ fun ChatMessageObject(
                         icon = Icons.Default.PushPin
                     ),
                     DropMenu(
-                        text = "Copy",
+                        text = "Copiar",
                         onClick = { copyTextToClipboard(context, message.content) },
                         icon = Icons.Default.CopyAll
                     ),
                     DropMenu(
-                        text = "Edit", onClick = {
+                        text = "Editar", onClick = {
                             showEditDialog = true
                         }, icon = Icons.Default.Edit
                     ),
                     DropMenu(
-                        text = "Delete",
+                        text = "Apagar",
                         onClick = { showDeleteDialog = true },
                         icon = Icons.Default.Delete
                     ),
@@ -166,9 +166,9 @@ fun ChatMessageObject(
 //            different rendering for different message types
             Column(
                 modifier = Modifier.padding(
-                    start = if (message.type == "text") 8.dp else 0.dp,
+                    start = if (message.type == "text") 15.dp else 0.dp,
                     end = if (message.type == "text") 30.dp else 0.dp,
-                    top = if (message.type == "text") 2.dp else 0.dp,
+                    top = if (message.type == "text") 5.dp else 0.dp,
                     bottom = if (message.type == "sticker") 0.dp else 0.dp
                 ), verticalArrangement = Arrangement.spacedBy((-5).dp)
             ) {
