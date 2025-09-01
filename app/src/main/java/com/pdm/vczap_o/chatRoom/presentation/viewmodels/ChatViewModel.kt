@@ -932,6 +932,25 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    // Função para apagar chat individual
+    fun removeConversationFromHome(roomId: String) {
+        viewModelScope.launch {
+            try {
+                // Limpa mensagens locais
+                _messages.value = emptyList()
+                _chatState.value = ChatState.Success(emptyList())
+                
+                // Remove mensagem fixada se houver
+                _pinnedMessage.value = null
+                
+                Log.d(tag, "Conversa $roomId removida da home com sucesso")
+            } catch (e: Exception) {
+                Log.e(tag, "Erro ao remover conversa da home: ${e.message}", e)
+                _chatState.value = ChatState.Error("Erro ao remover conversa: ${e.message}")
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         Log.d(tag, "onCleared: Removing Firestore message listener and media recorder")

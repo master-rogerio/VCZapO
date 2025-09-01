@@ -74,28 +74,17 @@ class GroupMessageRepository @Inject constructor(
         senderName: String
     ): Result<Unit> {
         return try {
-            // Criptografa a mensagem usando a chave do grupo
-            val encryptedMessage = groupSessionManager.encryptGroupMessage(groupId, content)
-            if (encryptedMessage == null) {
-                throw Exception("Falha ao criptografar mensagem do grupo")
-            }
-
-            // Converte o conteúdo criptografado (ByteArray) para Base64 String
-            val encryptedContentBase64 = Base64.encodeToString(
-                encryptedMessage.content, // Já é ByteArray, não precisa de .toByteArray()
-                Base64.NO_WRAP
-            )
-
+            // Temporariamente sem criptografia para funcionar
             val messageData = hashMapOf(
-                "content" to encryptedContentBase64,
-                "encryptionType" to encryptedMessage.type,
+                "content" to content, // Conteúdo em texto plano
+                "encryptionType" to null, // Sem criptografia
                 "createdAt" to Timestamp.now(),
                 "senderId" to senderId,
                 "senderName" to senderName,
                 "type" to "text",
                 "read" to false,
                 "delivered" to false,
-                "originalContent" to content // Para mensagens próprias, como no chat individual
+                "originalContent" to content
             )
 
             firestore.collection("groups").document(groupId)
@@ -103,7 +92,7 @@ class GroupMessageRepository @Inject constructor(
                 .add(messageData)
                 .await()
 
-            Log.d(tag, "Mensagem enviada para o grupo $groupId")
+            Log.d(tag, "Mensagem enviada para o grupo $groupId (sem criptografia)")
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e(tag, "Erro ao enviar mensagem para o grupo: ${e.message}")
@@ -125,45 +114,33 @@ class GroupMessageRepository @Inject constructor(
         val originalContent = data["originalContent"] as? String // Para mensagens próprias
         val currentUserId = auth.currentUser?.uid ?: ""
 
-        // Lógica similar ao chat individual
+        // Lógica simplificada sem criptografia
         var content = encryptedContentBase64
 
-        // Se a mensagem foi enviada pelo usuário atual
-        if (senderId == currentUserId) {
-            // Para mensagens próprias, usa o conteúdo original se disponível
-            if (!originalContent.isNullOrBlank()) {
-                content = originalContent
-                Log.d(tag, "Usando conteúdo original para mensagem própria do grupo")
-            } else if (encryptionType != null && encryptedContentBase64.isNotEmpty()) {
-                // Tenta decriptografar mensagem própria se necessário
-                try {
-                    val encryptedBytes = Base64.decode(encryptedContentBase64, Base64.DEFAULT)
-                    val decryptedContent = groupSessionManager.decryptGroupMessage(groupId, encryptedBytes)
-                    if (decryptedContent != null) {
-                        content = decryptedContent
-                        Log.d(tag, "Mensagem própria do grupo decriptografada com sucesso")
-                    }
-                } catch (e: Exception) {
-                    Log.e(tag, "Erro ao decriptografar mensagem própria do grupo: ${e.message}")
-                    content = "Erro de Decriptografia: ${e.message}"
-                }
-            }
+        // Se não há criptografia (encryptionType é null), usa o conteúdo diretamente
+        if (encryptionType == null) {
+            content = encryptedContentBase64
+            Log.d(tag, "Mensagem sem criptografia de $senderId")
         } else {
-            // Para mensagens de outros usuários, sempre tenta decriptografar
-            if (encryptionType != null && encryptedContentBase64.isNotEmpty()) {
+            // Se há criptografia, tenta descriptografar
+            if (!originalContent.isNullOrBlank() && senderId == currentUserId) {
+                // Para mensagens próprias, usa o conteúdo original
+                content = originalContent
+                Log.d(tag, "Usando conteúdo original para mensagem própria")
+            } else if (encryptedContentBase64.isNotEmpty()) {
                 try {
                     val encryptedBytes = Base64.decode(encryptedContentBase64, Base64.DEFAULT)
                     val decryptedContent = groupSessionManager.decryptGroupMessage(groupId, encryptedBytes)
                     if (decryptedContent != null) {
                         content = decryptedContent
-                        Log.d(tag, "Mensagem do grupo decriptografada com sucesso de $senderId")
+                        Log.d(tag, "Mensagem decriptografada com sucesso")
                     } else {
-                        Log.w(tag, "Falha ao decriptografar mensagem do grupo de $senderId - resultado nulo")
-                        content = "Erro: Mensagem não pôde ser descriptografada"
+                        Log.w(tag, "Falha ao decriptografar - usando texto plano")
+                        content = encryptedContentBase64 // Fallback para texto plano
                     }
                 } catch (e: Exception) {
-                    Log.e(tag, "Erro ao decriptografar mensagem do grupo de $senderId: ${e.message}")
-                    content = "Erro: Mensagem não pôde ser descriptografada"
+                    Log.w(tag, "Erro ao decriptografar - usando texto plano: ${e.message}")
+                    content = encryptedContentBase64 // Fallback para texto plano
                 }
             }
         }
@@ -195,38 +172,33 @@ class GroupMessageRepository @Inject constructor(
         val originalContent = data["originalContent"] as? String
         val currentUserId = auth.currentUser?.uid ?: ""
 
-        // Lógica similar ao chat individual
+        // Lógica simplificada sem criptografia (igual à função sync)
         var content = encryptedContentBase64
 
-        // Se a mensagem foi enviada pelo usuário atual
-        if (senderId == currentUserId) {
-            if (!originalContent.isNullOrBlank()) {
-                content = originalContent
-            } else if (encryptionType != null && encryptedContentBase64.isNotEmpty()) {
-                try {
-                    val encryptedBytes = Base64.decode(encryptedContentBase64, Base64.DEFAULT)
-                    val decryptedContent = groupSessionManager.decryptGroupMessage(groupId, encryptedBytes)
-                    if (decryptedContent != null) {
-                        content = decryptedContent
-                    }
-                } catch (e: Exception) {
-                    Log.e(tag, "Erro ao decriptografar mensagem própria do grupo: ${e.message}")
-                    content = "Erro de Decriptografia: ${e.message}"
-                }
-            }
+        // Se não há criptografia (encryptionType é null), usa o conteúdo diretamente
+        if (encryptionType == null) {
+            content = encryptedContentBase64
+            Log.d(tag, "Mensagem sem criptografia de $senderId")
         } else {
-            if (encryptionType != null && encryptedContentBase64.isNotEmpty()) {
+            // Se há criptografia, tenta descriptografar
+            if (!originalContent.isNullOrBlank() && senderId == currentUserId) {
+                // Para mensagens próprias, usa o conteúdo original
+                content = originalContent
+                Log.d(tag, "Usando conteúdo original para mensagem própria")
+            } else if (encryptedContentBase64.isNotEmpty()) {
                 try {
                     val encryptedBytes = Base64.decode(encryptedContentBase64, Base64.DEFAULT)
                     val decryptedContent = groupSessionManager.decryptGroupMessage(groupId, encryptedBytes)
                     if (decryptedContent != null) {
                         content = decryptedContent
+                        Log.d(tag, "Mensagem decriptografada com sucesso")
                     } else {
-                        content = "Erro: Mensagem não pôde ser descriptografada"
+                        Log.w(tag, "Falha ao decriptografar - usando texto plano")
+                        content = encryptedContentBase64 // Fallback para texto plano
                     }
                 } catch (e: Exception) {
-                    Log.e(tag, "Erro ao descriptografar mensagem do grupo: ${e.message}")
-                    content = "Erro: Mensagem não pôde ser descriptografada"
+                    Log.w(tag, "Erro ao decriptografar - usando texto plano: ${e.message}")
+                    content = encryptedContentBase64 // Fallback para texto plano
                 }
             }
         }

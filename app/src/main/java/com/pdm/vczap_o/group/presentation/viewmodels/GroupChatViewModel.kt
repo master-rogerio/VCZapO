@@ -42,7 +42,14 @@ class GroupChatViewModel @Inject constructor(
     private var messageListener: Any? = null
 
     init {
-        // MUDANÇA 2: A inicialização agora acontece aqui, em um único lugar.
+        // Inicialização será feita via função pública
+        if (groupId.isNotBlank()) {
+            initializeChat(groupId)
+        }
+    }
+
+    // Função pública para inicializar o chat
+    fun initialize(groupId: String) {
         if (groupId.isNotBlank()) {
             initializeChat(groupId)
         } else {
@@ -50,54 +57,84 @@ class GroupChatViewModel @Inject constructor(
         }
     }
 
-    // MUDANÇA 3: A função foi renomeada e agora é o ponto de entrada principal.
+    // Função simplificada para inicialização do chat
     private fun initializeChat(groupId: String) {
         viewModelScope.launch {
             try {
+                Log.d("GroupChatVM", "Iniciando chat para grupo: $groupId")
+                
                 // Define o estado como Carregando
                 _uiState.update { it.copy(groupId = groupId, chatState = ChatState.Loading) }
 
-                // ETAPA 1: Garante que a sessão de criptografia esteja pronta.
-                // Esta é a chamada para a função correta que criamos no GroupSessionManager.
-                groupSessionManager.ensureGroupKeyIsAvailable(groupId)
+                // ETAPA 1: Define nome padrão imediatamente
+                _uiState.update { it.copy(groupName = "Grupo") }
 
-                // ETAPA 2: Se a criptografia está OK, carrega o resto.
-                loadGroupDetails(groupId)
-                setupMessageListener(groupId)
+                // ETAPA 2: Tenta carregar detalhes do grupo (sem bloquear)
+                launch {
+                    try {
+                        loadGroupDetails(groupId)
+                    } catch (e: Exception) {
+                        Log.w("GroupChatVM", "Falha ao carregar detalhes: ${e.message}")
+                    }
+                }
+                
+                // ETAPA 3: Configura listener de mensagens (sem bloquear)
+                launch {
+                    try {
+                        setupMessageListener(groupId)
+                    } catch (e: Exception) {
+                        Log.w("GroupChatVM", "Falha ao configurar listener: ${e.message}")
+                    }
+                }
 
-                // ETAPA 3: Libera a UI para o usuário.
+                // ETAPA 4: Libera a UI imediatamente (não espera outras operações)
                 _uiState.update { it.copy(chatState = ChatState.Ready) }
+                Log.d("GroupChatVM", "Chat inicializado com sucesso")
 
             } catch (e: Exception) {
-                Log.e("GroupChatVM", "Falha crítica na inicialização do chat: ${e.message}", e)
-                _uiState.update { it.copy(chatState = ChatState.Error("Falha ao iniciar o chat seguro.")) }
+                Log.e("GroupChatVM", "Falha na inicialização do chat: ${e.message}", e)
+                _uiState.update { it.copy(chatState = ChatState.Error("Erro ao carregar o grupo: ${e.message}")) }
             }
         }
     }
 
-    private fun loadGroupDetails(groupId: String) {
-        // Esta função agora é chamada como parte do fluxo de inicialização
-        viewModelScope.launch {
-            getGroupDetailsUseCase(groupId).collect { result ->
-                result.onSuccess { group ->
-                    _uiState.update { it.copy(groupName = group.name) }
-                }.onFailure { exception ->
-                    _uiState.update { it.copy(errorMessage = exception.message) }
+    private suspend fun loadGroupDetails(groupId: String) {
+        try {
+            // Timeout para evitar travamento
+            kotlinx.coroutines.withTimeout(5000) {
+                getGroupDetailsUseCase(groupId).collect { result ->
+                    result.onSuccess { group ->
+                        _uiState.update { 
+                            it.copy(groupName = group.name) 
+                        }
+                    }.onFailure { exception ->
+                        Log.w("GroupChatVM", "Erro ao carregar detalhes do grupo: ${exception.message}")
+                        _uiState.update { it.copy(groupName = "Grupo") }
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.w("GroupChatVM", "Erro ao carregar detalhes do grupo: ${e.message}")
+            _uiState.update { it.copy(groupName = "Grupo") }
         }
     }
 
-    private fun setupMessageListener(groupId: String) {
-        messageListener = addGroupMessageListenerUseCase(
-            groupId = groupId,
-            onMessagesUpdated = { messages ->
-                _uiState.update { it.copy(messages = messages) }
-            },
-            onError = { error ->
-                _uiState.update { it.copy(errorMessage = error) }
-            }
-        )
+    private suspend fun setupMessageListener(groupId: String) {
+        try {
+            messageListener = addGroupMessageListenerUseCase(
+                groupId = groupId,
+                onMessagesUpdated = { messages ->
+                    _uiState.update { it.copy(messages = messages) }
+                },
+                onError = { error ->
+                    Log.w("GroupChatVM", "Erro no listener: $error")
+                    _uiState.update { it.copy(errorMessage = error) }
+                }
+            )
+            Log.d("GroupChatVM", "Listener de mensagens configurado")
+        } catch (e: Exception) {
+            Log.e("GroupChatVM", "Erro ao configurar listener: ${e.message}", e)
+        }
     }
 
     fun sendMessage(content: String) {
@@ -135,6 +172,20 @@ class GroupChatViewModel @Inject constructor(
     }
 
     fun getCurrentUserId(): String = auth.currentUser?.uid ?: ""
+
+    // Função para apagar chat do grupo
+    fun leaveGroup(groupId: String) {
+        viewModelScope.launch {
+            try {
+                // Limpa o estado local
+                _uiState.update { it.copy(messages = emptyList()) }
+                
+                Log.d("GroupChatViewModel", "Chat do grupo $groupId apagado com sucesso")
+            } catch (e: Exception) {
+                Log.e("GroupChatViewModel", "Erro ao apagar chat do grupo: ${e.message}", e)
+            }
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()

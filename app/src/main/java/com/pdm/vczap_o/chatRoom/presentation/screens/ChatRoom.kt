@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.pdm.vczap_o.R
 import com.pdm.vczap_o.chatRoom.presentation.components.AudioRecordingOverlay
+import com.pdm.vczap_o.chatRoom.presentation.components.DeleteChatDialog
 import com.pdm.vczap_o.chatRoom.presentation.components.DropMenu
 import com.pdm.vczap_o.chatRoom.presentation.components.EmptyChatPlaceholder
 import com.pdm.vczap_o.chatRoom.presentation.components.HeaderBar
@@ -119,6 +121,9 @@ fun ChatScreen(
     val messages by chatViewModel.filteredMessages.collectAsState() // ALTERADO para usar a lista filtrada
     val searchText by chatViewModel.searchText.collectAsState()
     val isSearchActive by chatViewModel.isSearchActive.collectAsState()
+    
+    // Estado para o diálogo de apagar chat
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     // DEBUG TEMPORÁRIO - Logs de mudança de estado
     LaunchedEffect(otherUserOnlineStatus) {
@@ -341,6 +346,13 @@ fun ChatScreen(
                             }
                         },
                         icon = Icons.Default.Person
+                    ),
+                    DropMenu(
+                        text = "Remover Conversa",
+                        onClick = {
+                            showDeleteDialog = true
+                        },
+                        icon = Icons.Default.Delete
                     )
                 ),
                 onImageClick = {
@@ -562,5 +574,19 @@ fun ChatScreen(
             }
         }
 
-}
+        // Diálogo de confirmação para apagar chat
+        DeleteChatDialog(
+            isVisible = showDeleteDialog,
+            chatName = decodedUsername,
+            isGroup = false,
+            onConfirm = {
+                // Implementar lógica de remover conversa da home
+                chatViewModel.removeConversationFromHome(roomId)
+                navController.popBackStack()
+            },
+            onDismiss = {
+                showDeleteDialog = false
+            }
+        )
+    }
 }

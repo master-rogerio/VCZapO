@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +34,6 @@ fun GroupTopBar(
     TopAppBar(
         title = {
             Row(
-                modifier = Modifier.clickable { /* Ação ao clicar no título */ },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
@@ -44,11 +44,12 @@ fun GroupTopBar(
                         .clip(CircleShape),
                     contentScale = ContentScale.Crop
                 )
+
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = group.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
                 )
             }
         },
