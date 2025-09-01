@@ -93,13 +93,17 @@ Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza u
 - ✅ **Suporte a Múltiplos Tipos de Mídia:** Envie mensagens de texto, imagens, vídeos, áudios, localização, stickers e outros tipos de arquivos.
 - ✅ **Funcionalidades Avançadas de Mensagens:** Reaja a mensagens, edite o conteúdo enviado e veja indicadores de "digitando...".
 - ✅ **Status de Presença:** Veja quando seus contatos estão online ou a última vez que estiveram ativos.
-- ✅ **Notificações Push:** Receba notificações de novas mensagens em tempo real para não perder nada.
 - ✅ **Modo Offline:** Acesse suas conversas e contatos mesmo sem conexão à internet, graças ao cache local com Room.
 - ✅ **Busca de Usuários:** Encontre e inicie conversas com novos usuários facilmente.
-- ✅ **Personalização:** Altere o tema do aplicativo (claro/escuro) e o tamanho da fonte para uma melhor experiência de visualização.
+- ✅ **Importa Usuários da Lista de Contatos:** Busque amigos já cadastrados na sua lista de contatos do dispositivos e converse com eles.
+- ✅ **Personalização:** Altere o tema do aplicativo (claro/escuro) ou mesmo com tema dinámico e claro o tamanho da fonte para uma melhor experiência de visualização.
 - ✅ **Perfil de Usuário:** Personalize seu perfil com foto e nome de usuário.
 - ✅ **Mensagens Fixadas:** Permite ao usuário selecione uma mensagem na conversa e a fixe no topo do chat.
 - ✅ **Filtro de Mensagens por Palavra-chave:** Personalize seu perfil com foto e nome de usuário.
+- ✅ **Reações a Mensagens:** Usuários podem reagir a mensagens individuais, uma função não mencionada na lista.
+- ✅ **Edição de Mensagens:** O aplicativo permite que os usuários editem o conteúdo de mensagens já enviadas.
+- ✅ **Suporte a Stickers:** Além de emojis, o aplicativo tem suporte para o envio de stickers.
+- ✅ **Câmera Integrada:** O app utiliza a biblioteca CameraX, indicando uma funcionalidade de câmera nativa para tirar e enviar fotos diretamente pelo aplicativo.
 
 <br>
 
