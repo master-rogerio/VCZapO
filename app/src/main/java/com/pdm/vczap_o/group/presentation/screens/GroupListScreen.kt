@@ -49,7 +49,7 @@ fun GroupListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { 
+                onClick = {
                     navController.navigate("create_group")
                 }
             ) {
@@ -71,7 +71,7 @@ fun GroupListScreen(
                         CircularProgressIndicator()
                     }
                 }
-                
+
                 uiState.groups.isEmpty() -> {
                     EmptyGroupsState(
                         onCreateGroupClick = {
@@ -79,7 +79,7 @@ fun GroupListScreen(
                         }
                     )
                 }
-                
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -149,12 +149,22 @@ fun GroupItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 Text(
                     text = "${group.members.size} membros",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Exibe os membros (IDs)
+                val memberIds = group.members.keys.joinToString(", ")
+                Text(
+                    text = "Membros: $memberIds",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -189,26 +199,26 @@ fun EmptyGroupsState(
             modifier = Modifier.size(80.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(
             text = "Nenhum grupo encontrado",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = "Crie seu primeiro grupo para começar a conversar com amigos",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Button(
             onClick = onCreateGroupClick,
             modifier = Modifier.fillMaxWidth()

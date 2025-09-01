@@ -43,11 +43,11 @@ fun GroupDetailsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = uiState.currentGroup?.name ?: "Detalhes do Grupo",
                         maxLines = 1
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -57,7 +57,7 @@ fun GroupDetailsScreen(
                 actions = {
                     if (groupViewModel.isCurrentUserAdmin()) {
                         IconButton(
-                            onClick = { 
+                            onClick = {
                                 navController.navigate("add_members/$groupId")
                             }
                         ) {
@@ -82,7 +82,7 @@ fun GroupDetailsScreen(
                         CircularProgressIndicator()
                     }
                 }
-                
+
                 uiState.currentGroup == null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -91,7 +91,7 @@ fun GroupDetailsScreen(
                         Text("Grupo não encontrado")
                     }
                 }
-                
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -103,17 +103,17 @@ fun GroupDetailsScreen(
                                 navController = navController  // Passar navController como parâmetro
                             )
                         }
-                        
+
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
-                                                         Text(
-                                 text = "Membros (${uiState.groupMembers.size})",
-                                 style = MaterialTheme.typography.titleMedium,
-                                 fontWeight = FontWeight.SemiBold
-                             )
+                            Text(
+                                text = "Membros (${uiState.groupMembers.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
                         }
-                        
+
                         // Admins
                         val admins = groupViewModel.getAdmins()
                         if (admins.isNotEmpty()) {
@@ -125,7 +125,7 @@ fun GroupDetailsScreen(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                             }
-                            
+
                             items(admins) { user ->
                                 MemberItem(
                                     user = user,
@@ -137,7 +137,7 @@ fun GroupDetailsScreen(
                                 )
                             }
                         }
-                        
+
                         // Membros regulares
                         val regularMembers = groupViewModel.getRegularMembers()
                         if (regularMembers.isNotEmpty()) {
@@ -150,7 +150,7 @@ fun GroupDetailsScreen(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
                             }
-                            
+
                             items(regularMembers) { user ->
                                 MemberItem(
                                     user = user,
@@ -173,7 +173,7 @@ fun GroupDetailsScreen(
 fun GroupHeader(
     group: com.pdm.vczap_o.group.data.model.Group,
     navController: NavController
-    ) {
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -204,18 +204,18 @@ fun GroupHeader(
                         )
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 Column {
                     Text(
                         text = group.name,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     Spacer(modifier = Modifier.height(4.dp))
-                    
+
                     Text(
                         text = "${group.members.size} membros",
                         style = MaterialTheme.typography.bodyMedium,
@@ -223,9 +223,9 @@ fun GroupHeader(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Botão para entrar no chat (se implementado)
             Button(
                 onClick = {
@@ -277,9 +277,9 @@ fun MemberItem(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.width(12.dp))
-        
+
         // Informações do usuário
         Column(
             modifier = Modifier.weight(1f)
@@ -289,7 +289,7 @@ fun MemberItem(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium
             )
-            
+
             if (isAdmin) {
                 Text(
                     text = "Administrador",
@@ -298,7 +298,7 @@ fun MemberItem(
                 )
             }
         }
-        
+
         // Botão de remover (apenas para admins)
         if (canRemove) {
             IconButton(

@@ -2,6 +2,7 @@ package com.pdm.vczap_o.group.presentation.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pdm.vczap_o.auth.domain.GetUserDataUseCase
 import com.pdm.vczap_o.auth.domain.GetUserIdUseCase
 import com.pdm.vczap_o.core.model.User
 import com.pdm.vczap_o.group.domain.usecase.GetGroupDetailsUseCase
@@ -18,7 +19,8 @@ import javax.inject.Inject
 class GroupDetailsViewModel @Inject constructor(
     private val getGroupDetailsUseCase: GetGroupDetailsUseCase,
     private val removeMemberUseCase: RemoveMemberUseCase,
-    private val getUserIdUseCase: GetUserIdUseCase
+    private val getUserIdUseCase: GetUserIdUseCase,
+    private val getUserDataUseCase: GetUserDataUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GroupDetailsUiState())
@@ -31,11 +33,25 @@ class GroupDetailsViewModel @Inject constructor(
             try {
                 getGroupDetailsUseCase(groupId).collect { result ->
                     result.onSuccess { group ->
+                        val memberUserIds = group.members.keys.toList()
+                        val membersAsNewUser = memberUserIds.mapNotNull { userId ->
+                            getUserDataUseCase(userId).getOrNull()
+                        }
+
+                        val members = membersAsNewUser.map { newUser ->
+                            User( // Convertendo NewUser para User
+                                userId = newUser.userId,
+                                username = newUser.username,
+                                profileUrl = newUser.profileUrl,
+                                deviceToken = newUser.deviceToken
+                            )
+                        }
+
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
                                 currentGroup = group,
-                                groupMembers = emptyList(), // Você precisa implementar a busca de membros
+                                groupMembers = members, // Corrigido para carregar os membros
                                 errorMessage = null
                             )
                         }
@@ -49,7 +65,7 @@ class GroupDetailsViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = e.message ?: "Erro ao carregar detalhes do grupo"
@@ -61,17 +77,17 @@ class GroupDetailsViewModel @Inject constructor(
 
     fun removeMember(userId: String) {
         val currentGroup = _uiState.value.currentGroup ?: return
-        
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
+
             try {
                 removeMemberUseCase(currentGroup.id, userId)
-                
+
                 // Recarrega os detalhes do grupo após remover o membro
                 loadGroupDetails(currentGroup.id)
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = e.message ?: "Erro ao remover membro"
@@ -97,15 +113,15 @@ class GroupDetailsViewModel @Inject constructor(
         val currentUserId = getUserIdUseCase() ?: return false
         val currentGroup = _uiState.value.currentGroup ?: return false
 
-        return currentGroup.members[currentUserId] == true // Corrigido
+        return currentGroup.members[currentUserId] == true
     }
 
     fun canRemoveMember(userId: String): Boolean {
         val currentUserId = getUserIdUseCase() ?: return false
-        
+
         // Não pode remover a si mesmo
         if (userId == currentUserId) return false
-        
+
         // Apenas admins podem remover membros
         return isCurrentUserAdmin()
     }
@@ -119,7 +135,7 @@ class GroupDetailsViewModel @Inject constructor(
         val members = _uiState.value.groupMembers
 
         return members.filter { user ->
-            currentGroup.members[user.userId] == true // Corrigido
+            currentGroup.members[user.userId] == true
         }
     }
 
@@ -128,7 +144,7 @@ class GroupDetailsViewModel @Inject constructor(
         val members = _uiState.value.groupMembers
 
         return members.filter { user ->
-            currentGroup.members[user.userId] != true // Corrigido
+            currentGroup.members[user.userId] != true
         }
     }
 }
