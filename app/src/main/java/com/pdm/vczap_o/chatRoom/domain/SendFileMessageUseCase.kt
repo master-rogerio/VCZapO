@@ -52,18 +52,42 @@ class SendFileMessageUseCase @Inject constructor(
                     else -> "📎"
                 }
                 
-                notificationUseCase(
-                    recipientsToken = recipientsToken,
+                val notificationBody = "$fileIcon Enviou um arquivo: $fileName"
+                
+                com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.sendNotificationViaFunction(
+                    recipientUserId = otherUserId,
                     title = senderName,
-                    body = "$fileIcon Sent a file: $fileName",
+                    body = notificationBody,
                     roomId = roomId,
-                    recipientsUserId = otherUserId,
-                    sendersUserId = senderId,
+                    senderUserId = senderId,
                     profileUrl = profileUrl
                 )
             } catch (notificationError: Exception) {
-                Log.w("SendFileMessageUseCase", "Falha ao enviar notificação: ${notificationError.message}")
-                // Não falha o envio da mensagem por causa da notificação
+                Log.w("SendFileMessageUseCase", "Falha ao enviar notificação via Firebase: ${notificationError.message}")
+                // Fallback: salvar no Firestore para processar depois
+                try {
+                    val fileIcon = when {
+                        mimeType.startsWith("application/pdf") -> "📄"
+                        mimeType.startsWith("application/zip") || mimeType.startsWith("application/x-zip") -> "🗜️"
+                        mimeType.startsWith("application/vnd.openxmlformats-officedocument.wordprocessingml.document") -> "📝"
+                        mimeType.startsWith("application/msword") -> "📝"
+                        mimeType.startsWith("application/vnd.ms-excel") || mimeType.startsWith("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") -> "📊"
+                        mimeType.startsWith("application/vnd.ms-powerpoint") || mimeType.startsWith("application/vnd.openxmlformats-officedocument.presentationml.presentation") -> "📈"
+                        else -> "📎"
+                    }
+                    val fallbackBody = "$fileIcon Enviou um arquivo: $fileName"
+                    
+                    com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.saveNotificationToFirestore(
+                        recipientUserId = otherUserId,
+                        title = senderName,
+                        body = fallbackBody,
+                        roomId = roomId,
+                        senderUserId = senderId,
+                        profileUrl = profileUrl
+                    )
+                } catch (fallbackError: Exception) {
+                    Log.e("SendFileMessageUseCase", "Falha no fallback de notificação: ${fallbackError.message}")
+                }
             }
             // FIM ADICIONADO
         } catch (e: Exception) {

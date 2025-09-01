@@ -263,13 +263,13 @@ class ChatViewModel @Inject constructor(
                 // CORRIGIDO: Para indicador de digitação ao enviar mensagem
                 onUserStoppedTyping()
                 
-                roomId?.let { roomId ->
-                    currentUserId?.let { userId ->
+                roomId?.let { currentRoomId ->
+                    currentUserId?.let { currentUser ->
                         // CORRIGIDO: Verificar se otherUserId é válido antes de enviar
                         val validOtherUserId = otherUserId
                         if (validOtherUserId.isNullOrBlank()) {
                             Log.e(tag, "❌ Erro: otherUserId é null ou vazio ao enviar mensagem")
-                            Log.e(tag, "roomId: $roomId, userId: $userId, otherUserId: $otherUserId")
+                            Log.e(tag, "roomId: $currentRoomId, userId: $currentUser, otherUserId: $otherUserId")
                             _chatState.value = ChatState.Error("Erro interno: ID do destinatário não encontrado")
                             return@launch
                         }
@@ -277,9 +277,9 @@ class ChatViewModel @Inject constructor(
                         Log.d(tag, "✅ Enviando mensagem com otherUserId válido: '$validOtherUserId'")
                         
                         sendTextMessageUseCase(
-                            roomId = roomId,
+                            roomId = currentRoomId,
                             content = content,
-                            senderId = userId,
+                            senderId = currentUser,
                             senderName = senderName,
                             recipientsToken = recipientsToken,
                             otherUserId = validOtherUserId,
@@ -296,8 +296,8 @@ class ChatViewModel @Inject constructor(
 
     fun sendAudioMessage(senderName: String, profileUrl: String, recipientsToken: String) {
         viewModelScope.launch {
-            roomId?.let { roomId ->
-                currentUserId?.let { userId ->
+            roomId?.let { currentRoomId ->
+                currentUserId?.let { currentUser ->
                     try {
                         // CORREÇÃO: Verificar se otherUserId não é null antes de enviar áudio
                         val validOtherUserId = otherUserId
@@ -308,8 +308,8 @@ class ChatViewModel @Inject constructor(
                         }
                         
                         audioRecordingUseCase.sendAudioMessage(
-                            roomId = roomId,
-                            senderId = userId,
+                            roomId = currentRoomId,
+                            senderId = currentUser,
                             senderName = senderName,
                             otherUserId = validOtherUserId,
                             profileUrl = profileUrl,
@@ -534,32 +534,65 @@ class ChatViewModel @Inject constructor(
     ) {
         viewModelScope.launch {
             try {
+                Log.d(tag, "=== INICIANDO ENVIO DE STICKER ===")
+                Log.d(tag, "roomId: '$roomId'")
+                Log.d(tag, "currentUserId: '$currentUserId'")
+                Log.d(tag, "otherUserId: '$otherUserId'")
+                Log.d(tag, "senderName: '$senderName'")
+                
                 // CORRIGIDO: Para indicador de digitação ao enviar sticker
                 onUserStoppedTyping()
                 
-                roomId?.let { roomId ->
-                    currentUserId?.let { userId ->
-                        otherUserId?.let { otherUserId ->
+                roomId?.let { currentRoomId ->
+                    currentUserId?.let { currentUser ->
+                        otherUserId?.let { recipientUser ->
                             sendStickerMessageUseCase(
-                                roomId = roomId,
+                                roomId = currentRoomId,
                                 stickerContent = stickerContent,
-                                senderId = userId,
+                                senderId = currentUser,
                                 senderName = senderName,
                                 recipientsToken = recipientsToken,
-                                otherUserId = otherUserId,
+                                otherUserId = recipientUser,
                                 profileUrl = profileUrl
                             )
                             
-                            // ADICIONADO: Enviar notificação push para sticker
-                            sendNotificationUseCase(
-                                recipientsToken = recipientsToken,
-                                title = senderName,
-                                body = "🎭 Enviou um sticker",
-                                roomId = roomId,
-                                recipientsUserId = otherUserId,
-                                sendersUserId = userId,
-                                profileUrl = profileUrl
-                            )
+                            // ADICIONADO: Enviar notificação push para sticker usando Firebase Functions
+                            try {
+                                Log.d(tag, "=== DEBUG NOTIFICAÇÃO STICKER ===")
+                                Log.d(tag, "recipientUserId (otherUserId): '$recipientUser'")
+                                Log.d(tag, "senderUserId (userId): '$currentUser'")
+                                Log.d(tag, "roomId: '$currentRoomId'")
+                                Log.d(tag, "senderName: '$senderName'")
+                                
+                                if (recipientUser.isBlank()) {
+                                    Log.e(tag, "❌ ERRO: recipientUser está vazio para notificação!")
+                                    return@let
+                                }
+                                
+                                if (currentUser.isBlank()) {
+                                    Log.e(tag, "❌ ERRO: currentUser está vazio para notificação!")
+                                    return@let
+                                }
+                                
+                                com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.sendNotificationViaFunction(
+                                    recipientUserId = recipientUser,
+                                    title = senderName,
+                                    body = "🎭 Enviou um sticker",
+                                    roomId = currentRoomId,
+                                    senderUserId = currentUser,
+                                    profileUrl = profileUrl
+                                )
+                            } catch (e: Exception) {
+                                // Fallback: salvar no Firestore para processar depois
+                                com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.saveNotificationToFirestore(
+                                    recipientUserId = recipientUser,
+                                    title = senderName,
+                                    body = "🎭 Enviou um sticker",
+                                    roomId = currentRoomId,
+                                    senderUserId = currentUser,
+                                    profileUrl = profileUrl
+                                )
+                            }
                         }
                     }
                 }

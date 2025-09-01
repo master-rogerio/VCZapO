@@ -56,6 +56,11 @@ object FirebaseDirectNotification {
             Log.d(TAG, "senderUserId: '$senderUserId'")
             Log.d(TAG, "senderUserId length: ${senderUserId.length}")
             
+            // DEBUG DETALHADO: Verificar cada campo do HashMap
+            data.forEach { (key, value) ->
+                Log.d(TAG, "🔍 HashMap[$key] = '$value' (type: ${value?.javaClass?.simpleName}, length: ${value?.toString()?.length ?: 0})")
+            }
+            
             // Verificar se contém caracteres inválidos
             val invalidChars = recipientUserId.filter { !it.isLetterOrDigit() }
             if (invalidChars.isNotEmpty()) {

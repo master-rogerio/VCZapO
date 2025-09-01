@@ -29,18 +29,29 @@ class SendVideoMessageUseCase @Inject constructor(
             
             // Envia notificação apenas se o envio da mensagem foi bem-sucedido
             try {
-                notificationUseCase(
-                    recipientsToken = recipientsToken,
+                com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.sendNotificationViaFunction(
+                    recipientUserId = otherUserId,
                     title = senderName,
-                    body = "🎥 Sent a video",
+                    body = "🎥 Enviou um vídeo",
                     roomId = roomId,
-                    recipientsUserId = otherUserId,
-                    sendersUserId = senderId,
+                    senderUserId = senderId,
                     profileUrl = profileUrl
                 )
             } catch (notificationError: Exception) {
-                Log.w("SendVideoMessageUseCase", "Falha ao enviar notificação: ${notificationError.message}")
-                // Não falha o envio da mensagem por causa da notificação
+                Log.w("SendVideoMessageUseCase", "Falha ao enviar notificação via Firebase: ${notificationError.message}")
+                // Fallback: salvar no Firestore para processar depois
+                try {
+                    com.pdm.vczap_o.notifications.data.FirebaseDirectNotification.saveNotificationToFirestore(
+                        recipientUserId = otherUserId,
+                        title = senderName,
+                        body = "🎥 Enviou um vídeo",
+                        roomId = roomId,
+                        senderUserId = senderId,
+                        profileUrl = profileUrl
+                    )
+                } catch (fallbackError: Exception) {
+                    Log.e("SendVideoMessageUseCase", "Falha no fallback de notificação: ${fallbackError.message}")
+                }
             }
             // FIM ADICIONADO
         } catch (e: Exception) {
