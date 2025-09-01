@@ -63,7 +63,6 @@ fun ChatAppNavigation() {
 
         // ... (outras rotas permanecem iguais)
         composable<AuthScreen> { AuthScreen(navController, authViewModelInstance) }
-        composable<LoadingScreen> { LoadingScreen(navController, authViewModelInstance) }
         composable<MainScreen> {
             val args = it.toRoute<MainScreen>()
             MainBottomNavScreen(
@@ -140,8 +139,6 @@ fun ChatAppNavigation() {
         composable<ContactsScreenDC> {
             ContactsScreen()
         }
-    }
-}
         composable(
             route = "group_details/{groupId}",
             arguments = listOf(
@@ -166,9 +163,7 @@ fun ChatAppNavigation() {
             )
         }
 
-        // ====================================================================
-        // ===== ROTA ADICIONADA PARA CORRIGIR O CRASH ========================
-        // ====================================================================
+
         composable(
             route = "add_members/{groupId}",
             arguments = listOf(navArgument("groupId") { type = NavType.StringType })
@@ -179,5 +174,9 @@ fun ChatAppNavigation() {
             AddMembersScreen(navController = navController, groupId = groupId)
         }
         // ====================================================================
+
     }
 }
+
+
+

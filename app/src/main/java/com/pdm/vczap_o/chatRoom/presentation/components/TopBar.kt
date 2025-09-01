@@ -143,61 +143,6 @@ fun HeaderBar(
                         error = rememberAsyncImagePainter(R.drawable.person)
                     )
 
-                Column {
-                    Text(
-                        text = name,
-                        fontSize = 18.sp,
-                        modifier = Modifier.padding(start = 10.dp),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    // ADICIONADO: Lógica para exibir status do usuário
-                    // DEBUG TEMPORÁRIO
-                    android.util.Log.d("TopBar", "=== TOPBAR DEBUG ===")
-                    android.util.Log.d("TopBar", "isUserTyping: $isUserTyping")
-                    android.util.Log.d("TopBar", "isUserOnline: $isUserOnline")
-                    android.util.Log.d("TopBar", "lastSeen: $lastSeen")
-                    android.util.Log.d("TopBar", "netActivity: '$netActivity'")
-
-                    // SIMPLIFICADO: Lógica mais clara
-                    val statusText = if (isUserTyping) {
-                        android.util.Log.d("TopBar", "ESCOLHEU: digitando...")
-                        "digitando..."
-                    } else if (isUserOnline) {
-                        android.util.Log.d("TopBar", "ESCOLHEU: online")
-                        "online"
-                    } else if (!lastSeen.isNullOrBlank()) {
-                        android.util.Log.d("TopBar", "ESCOLHEU: visto por último $lastSeen")
-                        "visto por último $lastSeen"
-                    } else if (netActivity.isNotEmpty()) {
-                        android.util.Log.d("TopBar", "ESCOLHEU: netActivity $netActivity")
-                        netActivity
-                    } else {
-                        android.util.Log.d("TopBar", "ESCOLHEU: vazio")
-                        ""
-                    }
-
-                    android.util.Log.d("TopBar", "STATUS FINAL: '$statusText'")
-                    android.util.Log.d("TopBar", "=== FIM TOPBAR ===")
-
-                    val statusColor = when {
-                        isUserTyping -> MaterialTheme.colorScheme.primary
-                        isUserOnline -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                    }
-
-                    if (statusText.isNotEmpty()) {
-                        Text(
-                            text = statusText,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(start = 11.dp),
-                            color = statusColor
-                        )
-                    }
-                    // FIM ADICIONADO
-                }
-            }
-
-        }
                     Column {
                         Text(
                             text = name,
@@ -205,7 +150,8 @@ fun HeaderBar(
                             modifier = Modifier.padding(start = 10.dp),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        // Lógica para exibir status do usuário
+
+                        // SIMPLIFICADO: Lógica mais clara
                         val statusText = if (isUserTyping) {
                             "digitando..."
                         } else if (isUserOnline) {
@@ -217,6 +163,7 @@ fun HeaderBar(
                         } else {
                             ""
                         }
+
 
                         val statusColor = when {
                             isUserTyping -> MaterialTheme.colorScheme.primary
@@ -234,9 +181,10 @@ fun HeaderBar(
                         }
                     }
                 }
+
             }
 
-            // Ícones de ação (com o ícone de busca adicionado)
+
             Row(
                 modifier = Modifier.padding(end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically

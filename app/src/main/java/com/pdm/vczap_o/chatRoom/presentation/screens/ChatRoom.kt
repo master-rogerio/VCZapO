@@ -130,10 +130,7 @@ fun ChatScreen(
     LaunchedEffect(otherUserLastSeen) {
         Log.d(tag, "=== CHATROOM: otherUserLastSeen mudou para: $otherUserLastSeen ===")
     }
-    // FIM ADICIONADO
 
-//     functions
-//    val messages = generateMockMessages(currentUserId)
     val showScrollToBottom by remember {
         derivedStateOf {
             val firstVisibleIndex = listState.firstVisibleItemIndex
@@ -163,12 +160,11 @@ fun ChatScreen(
         }
     }
 
-    // ADICIONADO: Launcher para seleção de vídeos
+
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { videoUri ->
-            // ALTERAÇÃO: Implementar upload e envio real de vídeo
             coroutineScope.launch {
                 try {
                     Toast.makeText(context, "Fazendo upload do vídeo...", Toast.LENGTH_SHORT).show()
@@ -195,17 +191,15 @@ fun ChatScreen(
         }
     }
 
-    // ADICIONADO: Launcher para seleção de arquivos genéricos
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { fileUri ->
-            // ALTERAÇÃO: Implementar upload e envio real de arquivo
             coroutineScope.launch {
                 try {
                     Toast.makeText(context, "Fazendo upload do arquivo...", Toast.LENGTH_SHORT).show()
-                    
-                    // Obter informações do arquivo
+
                     val contentResolver = context.contentResolver
                     val cursor = contentResolver.query(fileUri, null, null, null, null)
                     var fileName = "arquivo_${System.currentTimeMillis()}"
@@ -229,7 +223,7 @@ fun ChatScreen(
                     val fileUrl = chatViewModel.uploadFile(fileUri, userData?.username ?: "", fileName)
                     if (fileUrl != null) {
                         chatViewModel.sendFileMessage(
-                            caption = "", // Sem caption por enquanto
+                            caption = "",
                             fileUrl = fileUrl,
                             fileName = fileName,
                             fileSize = fileSize,
@@ -250,7 +244,6 @@ fun ChatScreen(
             }
         }
     }
-    // FIM ADICIONADO
 
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -285,7 +278,7 @@ fun ChatScreen(
         chatViewModel.initialize(roomId, currentUserId, userId)
     }
     
-    // ADICIONADO: Gerenciar status baseado no ciclo de vida da tela
+
     LaunchedEffect(Unit) {
         chatViewModel.onAppForeground()
     }
