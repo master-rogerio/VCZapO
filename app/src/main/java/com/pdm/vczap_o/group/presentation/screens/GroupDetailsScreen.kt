@@ -1,5 +1,6 @@
 package com.pdm.vczap_o.group.presentation.screens
 
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,7 @@ fun GroupDetailsScreen(
     groupId: String,
     groupViewModel: GroupDetailsViewModel = hiltViewModel()
 ) {
+    Log.d("GroupDetailsScreen", "GroupDetailsScreen sendo renderizada para grupo: $groupId")
     val uiState by groupViewModel.uiState.collectAsState()
 
     LaunchedEffect(groupId) {
@@ -96,7 +98,10 @@ fun GroupDetailsScreen(
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         item {
-                            GroupHeader(group = uiState.currentGroup!!)
+                            GroupHeader(
+                                group = uiState.currentGroup!!,
+                                navController = navController  // Passar navController como parâmetro
+                            )
                         }
                         
                         item {
@@ -165,7 +170,10 @@ fun GroupDetailsScreen(
 }
 
 @Composable
-fun GroupHeader(group: com.pdm.vczap_o.group.data.model.Group) {
+fun GroupHeader(
+    group: com.pdm.vczap_o.group.data.model.Group,
+    navController: NavController
+    ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -220,7 +228,11 @@ fun GroupHeader(group: com.pdm.vczap_o.group.data.model.Group) {
             
             // Botão para entrar no chat (se implementado)
             Button(
-                onClick = { /* Navegar para o chat do grupo */ },
+                onClick = {
+                    Log.d("GroupDetails", "Tentando navegar para chat do grupo: ${group.id}")
+                    // Navegar para o chat do grupo
+                    navController.navigate("group_chat/${group.id}")
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(

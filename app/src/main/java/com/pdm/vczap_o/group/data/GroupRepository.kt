@@ -20,7 +20,7 @@ class GroupRepository @Inject constructor(
      * Cria um novo grupo no Firestore.
      * Gera um ID único para o novo grupo antes de salvá-lo.
      */
-    suspend fun createGroup(group: Group): Result<Unit> {
+    suspend fun createGroup(group: Group): Result<String> {
         return try {
             // 1. Gera uma referência para um novo documento, obtendo um ID único.
             val newGroupRef = groupsCollection.document()
@@ -28,7 +28,7 @@ class GroupRepository @Inject constructor(
             val groupWithId = group.copy(id = newGroupRef.id)
             // 3. Salva o grupo completo (com ID) no Firestore.
             newGroupRef.set(groupWithId).await()
-            Result.success(Unit)
+            Result.success(newGroupRef.id) // Retorna o ID do grupo
         } catch (e: Exception) {
             Result.failure(e)
         }

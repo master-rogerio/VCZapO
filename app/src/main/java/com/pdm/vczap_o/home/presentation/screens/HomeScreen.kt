@@ -339,7 +339,8 @@ fun GroupListItem(group: Group, navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                // TODO: Navegar para a tela de chat do grupo quando ela for criada
+                Log.d("GroupListItem", "Clicando no grupo: ${group.name} (ID: ${group.id})")
+                navController.navigate("group_details/${group.id}")
             }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically

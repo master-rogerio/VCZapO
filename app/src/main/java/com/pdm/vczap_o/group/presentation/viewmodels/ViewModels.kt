@@ -8,3 +8,4 @@ package com.pdm.vczap_o.group.presentation.viewmodels
 // - CreateGroupViewModel: Para criação de grupos
 // - GroupDetailsViewModel: Para detalhes do grupo
 // - AddMembersViewModel: Para adicionar membros ao grupo
+// class GroupChatViewModel

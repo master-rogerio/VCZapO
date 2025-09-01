@@ -83,7 +83,7 @@ class CreateGroupViewModel @Inject constructor(
 
     fun createGroup(groupName: String) {
         val currentState = _uiState.value
-        
+
         if (groupName.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Nome do grupo é obrigatório") }
             return
@@ -96,27 +96,36 @@ class CreateGroupViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            
+
             try {
                 val currentUserId = getUserIdUseCase() ?: throw Exception("Usuário não autenticado")
                 val memberIds = currentState.selectedUsers.map { it.userId }
                 val allMemberIds = (memberIds + currentUserId).distinct()
-                
-                val groupId = createGroupUseCase(
-                    name = currentState.groupName,
+
+                val result = createGroupUseCase(
+                    name = groupName,
                     memberIds = allMemberIds
                 )
-                
-                _uiState.update { 
-                    it.copy(
-                        isLoading = false,
-                        groupCreated = true,
-                        createdGroupId = groupId,
-                        errorMessage = null
-                    )
+
+                result.onSuccess { groupId ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            groupCreated = true,
+                            createdGroupId = groupId,
+                            errorMessage = null
+                        )
+                    }
+                }.onFailure { exception ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "Erro ao criar grupo"
+                        )
+                    }
                 }
             } catch (e: Exception) {
-                _uiState.update { 
+                _uiState.update {
                     it.copy(
                         isLoading = false,
                         errorMessage = e.message ?: "Erro ao criar grupo"

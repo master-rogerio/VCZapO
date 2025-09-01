@@ -13,13 +13,17 @@ class CreateGroupUseCase @Inject constructor(
      * Invoca o caso de uso para criar um novo grupo.
      * O repositório será responsável por gerar o ID do grupo.
      */
-    suspend operator fun invoke(name: String, memberIds: List<String>): String {
-        val group = Group(
-            name = name,
-            createdBy = memberIds.firstOrNull() ?: "",
-            members = memberIds.associateWith { false }
-        )
-        val result = repository.createGroup(group)
-        return result.getOrThrow().toString() // Ou tratar o erro adequadamente
+    suspend operator fun invoke(name: String, memberIds: List<String>): Result<String> {
+        return try {
+            val group = Group(
+                name = name,
+                createdBy = memberIds.firstOrNull() ?: "",
+                members = memberIds.associateWith { false }
+            )
+            val result = repository.createGroup(group)
+            result.map { group.id } // Retorna o ID do grupo criado
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }
