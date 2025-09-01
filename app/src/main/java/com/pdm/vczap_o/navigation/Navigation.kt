@@ -29,6 +29,8 @@ import com.pdm.vczap_o.chatRoom.presentation.viewmodels.ChatViewModel
 import com.pdm.vczap_o.core.domain.logger
 import com.pdm.vczap_o.core.domain.showToast
 import com.pdm.vczap_o.core.model.User
+// IMPORT ADICIONADO
+import com.pdm.vczap_o.group.presentation.screens.AddMembersScreen
 import com.pdm.vczap_o.group.presentation.screens.CreateGroupScreen
 import com.pdm.vczap_o.group.presentation.screens.GroupInfoScreen
 import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
@@ -53,14 +55,9 @@ fun ChatAppNavigation() {
         startDestination = LoadingScreen,
         modifier = Modifier.background(MaterialTheme.colorScheme.background)
     ) {
-        composable<AuthScreen> {
-            AuthScreen(navController, authViewModelInstance)
-        }
-
-        composable<LoadingScreen> {
-            LoadingScreen(navController, authViewModelInstance)
-        }
-
+        // ... (outras rotas permanecem iguais)
+        composable<AuthScreen> { AuthScreen(navController, authViewModelInstance) }
+        composable<LoadingScreen> { LoadingScreen(navController, authViewModelInstance) }
         composable<MainScreen> {
             val args = it.toRoute<MainScreen>()
             MainBottomNavScreen(
@@ -72,10 +69,7 @@ fun ChatAppNavigation() {
                 initialPage = args.initialPage
             )
         }
-
-        composable<ChatRoomScreen>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }
-        ) {
+        composable<ChatRoomScreen>(enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
             val args = it.toRoute<ChatRoomScreen>()
             ChatScreen(
                 navController = navController,
@@ -86,33 +80,15 @@ fun ChatAppNavigation() {
                 settingsViewModel = settingsViewModel,
             )
         }
-
-        composable<SearchUsersScreenDC>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
-            SearchUsersScreen(navController)
-        }
-
-        composable<SetUserDetailsDC>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) {
-            SetUserDetailsScreen(navController, authViewModel = authViewModelInstance)
-        }
-
-        composable<EditProfileDC>(
-            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) {
-            EditProfileScreen(navController, authViewModel = authViewModelInstance)
-        }
-
-        composable<OtherProfileScreenDC>(
-            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }
-        ) {
+        composable<SearchUsersScreenDC>(enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) { SearchUsersScreen(navController) }
+        composable<SetUserDetailsDC>(enterTransition = { slideInHorizontally(initialOffsetX = { it / 2 }) }) { SetUserDetailsScreen(navController, authViewModel = authViewModelInstance) }
+        composable<EditProfileDC>(enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) { EditProfileScreen(navController, authViewModel = authViewModelInstance) }
+        composable<OtherProfileScreenDC>(enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) {
             val args = it.toRoute<OtherProfileScreenDC>()
             val userData = Gson().fromJson(args.user, User::class.java)
             OtherUserProfileScreen(navController = navController, userData = userData)
         }
-
-        composable<ImagePreviewScreen>(
-            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }
-        ) {
+        composable<ImagePreviewScreen>(enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) {
             val args = it.toRoute<ImagePreviewScreen>()
             if (args.imageUri.isEmpty()) {
                 showToast(context, "An error occurred, Invalid image format")
@@ -130,10 +106,7 @@ fun ChatAppNavigation() {
                 otherUserId = args.otherUserId
             )
         }
-
-        composable<CameraXScreenDC>(
-            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }
-        ) {
+        composable<CameraXScreenDC>(enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) {
             val args = it.toRoute<CameraXScreenDC>()
             CameraXScreen(
                 navController = navController,
@@ -145,23 +118,13 @@ fun ChatAppNavigation() {
                 }
             )
         }
-
-        composable<CreateGroupScreen>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
-        ) {
-            CreateGroupScreen(navController = navController)
-        }
-
-        composable<GroupInfoScreen>(
-            enterTransition = { slideInHorizontally(initialOffsetX = { it }) }
-        ) {
+        composable<CreateGroupScreen>(enterTransition = { slideInHorizontally(initialOffsetX = { it }) }) { CreateGroupScreen(navController = navController) }
+        composable<GroupInfoScreen>(enterTransition = { slideInHorizontally(initialOffsetX = { it }) }) {
             val args = it.toRoute<GroupInfoScreen>()
-            // 👇 CORREÇÃO AQUI 👇
             GroupInfoScreen(
                 groupId = args.groupId
             )
         }
-
         composable(
             route = "group_details/{groupId}",
             arguments = listOf(
@@ -175,21 +138,29 @@ fun ChatAppNavigation() {
                 groupId = groupId
             )
         }
-
-        // Adicione esta rota junto com as outras rotas existentes
         composable(
             route = "group_chat/{groupId}",
             arguments = listOf(
                 navArgument("groupId") { type = NavType.StringType }
             )
-        ) { // MUDANÇA: Não precisamos mais do backStackEntry aqui
-
-            // A tela agora é chamada de forma mais simples.
-            // O Hilt e o SavedStateHandle cuidam de entregar o groupId
-            // para o GroupChatViewModel automaticamente.
+        ) {
             GroupChatScreen(
                 navController = navController
             )
         }
+
+        // ====================================================================
+        // ===== ROTA ADICIONADA PARA CORRIGIR O CRASH ========================
+        // ====================================================================
+        composable(
+            route = "add_members/{groupId}",
+            arguments = listOf(navArgument("groupId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val groupId = backStackEntry.arguments?.getString("groupId")
+            // Usamos requireNotNull para garantir que o groupId não seja nulo
+            requireNotNull(groupId) { "O ID do grupo é obrigatório para esta tela." }
+            AddMembersScreen(navController = navController, groupId = groupId)
+        }
+        // ====================================================================
     }
 }

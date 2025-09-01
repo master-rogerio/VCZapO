@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Chat // Import do ícone de Chat
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.*
@@ -30,19 +31,13 @@ fun GroupDetailsScreen(
     val uiState by groupViewModel.uiState.collectAsState()
     val currentUserId = groupViewModel.getCurrentUserId()
 
-    // ====================================================================
-    // ===== AQUI ESTÁ A CORREÇÃO =========================================
-    // ====================================================================
-    // Criamos um "estado derivado" que é recalculado sempre que o uiState muda.
     val isCurrentUserAdmin = remember(uiState.currentGroup) {
-        // Usamos a mesma lógica da função do ViewModel, mas de forma reativa.
         val group = uiState.currentGroup ?: return@remember false
         val adminIds = group.members
             .filter { (_, data) -> (data["isAdmin"] as? Boolean) == true }
             .keys
         currentUserId in adminIds
     }
-    // ====================================================================
 
     LaunchedEffect(groupId) {
         groupViewModel.loadGroupDetails(groupId)
@@ -63,7 +58,6 @@ fun GroupDetailsScreen(
                     }
                 },
                 actions = {
-                    // Agora usamos a nossa variável reativa 'isCurrentUserAdmin'
                     if (isCurrentUserAdmin) {
                         IconButton(onClick = {
                             navController.navigate("add_members/$groupId")
@@ -86,14 +80,17 @@ fun GroupDetailsScreen(
             when {
                 uiState.isLoading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 uiState.currentGroup != null -> {
-                    // A função getAdminIds ainda é usada aqui para a lista
                     val adminIds = groupViewModel.getAdminIds()
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp)
                     ) {
                         item {
-                            GroupHeader(group = uiState.currentGroup!!)
+                            // Passando o NavController para o Header
+                            GroupHeader(
+                                group = uiState.currentGroup!!,
+                                navController = navController
+                            )
                             Spacer(modifier = Modifier.height(24.dp))
                             Text(
                                 text = "Membros (${uiState.groupMembers.size})",
@@ -121,8 +118,11 @@ fun GroupDetailsScreen(
     }
 }
 
+// ==========================================================
+// ===== AQUI ESTÁ A ALTERAÇÃO ==============================
+// ==========================================================
 @Composable
-fun GroupHeader(group: GroupModel) {
+fun GroupHeader(group: GroupModel, navController: NavController) { // Adicionado NavController
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -145,5 +145,16 @@ fun GroupHeader(group: GroupModel) {
         Text(text = group.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
         Text(text = "${group.members.size} membros", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        // BOTÃO ADICIONADO DE VOLTA
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = { navController.navigate("group_chat/${group.id}") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Chat, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Entrar no Chat")
+        }
     }
 }
