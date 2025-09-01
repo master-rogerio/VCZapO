@@ -35,14 +35,33 @@ class HomeRepository @Inject constructor(
     }
 
     fun getFCMToken(callBack: (token: String) -> Unit) {
+        Log.d(tag, "=== OBTENDO TOKEN FCM ===")
         FirebaseMessaging.getInstance().token
             .addOnCompleteListener { task ->
                 if (!task.isSuccessful) {
-                    Log.e(tag, "Fetching FCM token failed", task.exception)
+                    Log.e(tag, "❌ Falha ao obter token FCM", task.exception)
+                    Log.e(tag, "Erro: ${task.exception?.message}")
+                    callBack("")
                     return@addOnCompleteListener
                 }
-                callBack(task.result)
-                Log.d(tag, "FCM Token: ${task.result}")
+                
+                val token = task.result ?: ""
+                Log.d(tag, "✅ Token FCM obtido com sucesso")
+                Log.d(tag, "Token: $token")
+                Log.d(tag, "Token length: ${token.length}")
+                Log.d(tag, "Token válido: ${token.isNotEmpty() && token.length > 50}")
+                
+                if (token.isEmpty()) {
+                    Log.e(tag, "❌ Token FCM está vazio!")
+                } else if (token.length < 50) {
+                    Log.e(tag, "❌ Token FCM parece inválido (muito curto)")
+                }
+                
+                callBack(token)
+            }
+            .addOnFailureListener { exception ->
+                Log.e(tag, "❌ Erro ao obter token FCM: ${exception.message}")
+                callBack("")
             }
     }
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,11 +22,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Message // Importe o ícone correto
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhonelinkLock
+import androidx.compose.material.icons.filled.PhonelinkRing
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Textsms
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,6 +68,7 @@ import com.pdm.vczap_o.group.data.model.Group
 import com.pdm.vczap_o.home.presentation.components.ChatListItem
 import com.pdm.vczap_o.home.presentation.viewmodels.HomeViewModel
 import com.pdm.vczap_o.navigation.AuthScreen
+import com.pdm.vczap_o.navigation.ContactsScreenDC // Importe a nova rota
 import com.pdm.vczap_o.navigation.CreateGroupScreen
 import com.pdm.vczap_o.navigation.MainScreen
 import com.pdm.vczap_o.navigation.SearchUsersScreenDC
@@ -77,9 +82,7 @@ fun HomeScreen(
     authViewModel: AuthViewModel,
     context: Context,
     chatViewModel: ChatViewModel,
-)
-
-{
+) {
     val homeViewModel: HomeViewModel = hiltViewModel()
     val notificationRepository = ApiRequestsRepository()
     val user = FirebaseAuth.getInstance().currentUser
@@ -179,21 +182,29 @@ fun HomeScreen(
     Scaffold(topBar = {
         Row(
             modifier = Modifier
-                .height(80.dp)
+                .height(110.dp)
                 .fillMaxWidth(1f)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 15.dp)
+                .padding(top = 10.dp)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row {
+
+            Row(modifier = Modifier.padding(top = 25.dp)) {
+                Icon(
+                    imageVector = Icons.Default.PhonelinkLock,
+                    contentDescription = "Logo",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+
                 Text(
-                    "V.C Zap-o",
+                    "V.C. Zap-O",
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 24.sp,
-                    textAlign = TextAlign.Center
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp,
+                    textAlign = TextAlign.End,
                 )
                 if (netActivity.isNotBlank()) {
                     Text(
@@ -204,10 +215,10 @@ fun HomeScreen(
                     )
                 }
             }
-            Row {
+            Row(modifier = Modifier.padding(top = 25.dp)) {
                 Icon(
                     Icons.Outlined.Search,
-                    contentDescription = "",
+                    contentDescription = "Pesquisa",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .clickable(onClick = { navController.navigate(SearchUsersScreenDC) })
@@ -215,7 +226,7 @@ fun HomeScreen(
                 )
                 Icon(
                     Icons.Outlined.MoreVert,
-                    contentDescription = "",
+                    contentDescription = "3 Pontin",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier
                         .clickable(onClick = { expanded = true })
@@ -235,7 +246,7 @@ fun HomeScreen(
                             icon = Icons.Default.GroupAdd
                         ),
                         DropMenu(
-                            text = "Profile",
+                            text = "Perfil",
                             onClick = {
                                 navController.navigate(MainScreen(1)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -244,7 +255,7 @@ fun HomeScreen(
                             icon = Icons.Default.Person
                         ),
                         DropMenu(
-                            text = "Settings",
+                            text = "Configurações",
                             onClick = {
                                 navController.navigate(MainScreen(2)) {
                                     popUpTo(MainScreen(0)) { inclusive = false }
@@ -253,7 +264,7 @@ fun HomeScreen(
                             icon = Icons.Default.Settings
                         ),
                         DropMenu(
-                            text = "Logout",
+                            text = "Sair",
                             onClick = { authViewModel.logout() },
                             icon = Icons.AutoMirrored.Default.Logout
                         ),
@@ -262,14 +273,20 @@ fun HomeScreen(
                 )
             }
         }
-    }, floatingActionButton = {
-        FloatingActionButton(
-            onClick = { navController.navigate(SearchUsersScreenDC) },
-            modifier = Modifier.padding(bottom = 20.dp, end = 5.dp)
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add Chat")
-        }
-    }) { paddingValues ->
+    },
+        // ▼▼▼ ALTERAÇÕES SOMENTE AQUI DENTRO ▼▼▼
+        floatingActionButton = {
+            FloatingActionButton(
+                // ANTES: onClick = { navController.navigate(SearchUsersScreenDC) }
+                // AGORA: Navega para a tela de contatos que criamos.
+                onClick = { navController.navigate(ContactsScreenDC) },
+                modifier = Modifier.padding(top = 200.dp, end = 10.dp)
+            ) {
+                // ANTES: Icon(imageVector = Icons.Default.Add, ...
+                // AGORA: Usamos um ícone de mensagem, que combina mais com "iniciar conversa".
+                Icon(imageVector = Icons.Default.Message, contentDescription = "Contatos")
+            }
+        }) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -324,7 +341,7 @@ fun HomeScreen(
             } else {
                 EmptyChatPlaceholder(
                     lottieAnimation = R.raw.online_chat,
-                    message = "Press + to search users",
+                    message = "Press the message button to search contacts", // Mensagem ajustada
                     speed = 0.6f,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -359,4 +376,3 @@ fun GroupListItem(group: Group, navController: NavController) {
         }
     }
 }
-

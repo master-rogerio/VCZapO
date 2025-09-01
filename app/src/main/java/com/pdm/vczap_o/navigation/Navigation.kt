@@ -17,7 +17,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
-import com.pdm.vczap_o.LoadingScreen
+// Removido: LoadingScreen não é mais necessário
 import com.pdm.vczap_o.auth.presentation.screens.AuthScreen
 import com.pdm.vczap_o.auth.presentation.screens.SetUserDetailsScreen
 import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
@@ -37,6 +37,7 @@ import com.pdm.vczap_o.home.presentation.screens.EditProfileScreen
 import com.pdm.vczap_o.home.presentation.screens.SearchUsersScreen
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
 import com.google.gson.Gson
+import com.pdm.vczap_o.contacts.presentation.screens.ContactsScreen
 import com.pdm.vczap_o.group.presentation.screens.GroupChatScreen
 import com.pdm.vczap_o.group.presentation.screens.GroupDetailsScreen
 
@@ -52,9 +53,14 @@ fun ChatAppNavigation() {
 
     NavHost(
         navController = navController,
-        startDestination = LoadingScreen,
+        startDestination = AuthScreen,
         modifier = Modifier.background(MaterialTheme.colorScheme.background)
     ) {
+        composable<AuthScreen> {
+            AuthScreen(navController, authViewModelInstance)
+        }
+
+
         // ... (outras rotas permanecem iguais)
         composable<AuthScreen> { AuthScreen(navController, authViewModelInstance) }
         composable<LoadingScreen> { LoadingScreen(navController, authViewModelInstance) }
@@ -88,7 +94,10 @@ fun ChatAppNavigation() {
             val userData = Gson().fromJson(args.user, User::class.java)
             OtherUserProfileScreen(navController = navController, userData = userData)
         }
-        composable<ImagePreviewScreen>(enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }) {
+
+        composable<ImagePreviewScreen>(
+            enterTransition = { slideInVertically(initialOffsetY = { it / 2 }) }
+        ) {
             val args = it.toRoute<ImagePreviewScreen>()
             if (args.imageUri.isEmpty()) {
                 showToast(context, "An error occurred, Invalid image format")
@@ -125,6 +134,14 @@ fun ChatAppNavigation() {
                 groupId = args.groupId
             )
         }
+        // ADIÇÃO TERMINA AQUI
+
+        // ADICIONADO: A NOVA ROTA PARA A TELA DE CONTATOS
+        composable<ContactsScreenDC> {
+            ContactsScreen()
+        }
+    }
+}
         composable(
             route = "group_details/{groupId}",
             arguments = listOf(

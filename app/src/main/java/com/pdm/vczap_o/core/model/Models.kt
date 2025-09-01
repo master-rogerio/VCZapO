@@ -11,14 +11,18 @@ data class RoomData(
     var lastMessage: String = "",
     var lastMessageTimestamp: Timestamp?,
     var lastMessageSenderId: String = "",
-    var otherParticipant: User
+    var otherParticipant: User,
+    var pinnedMessageId: String? = null
 ) : Serializable
 
 data class User(
     var userId: String = "",
     var username: String = "",
     var profileUrl: String = "",
-    var deviceToken: String = ""
+    var deviceToken: String = "",
+    var notificationsEnabled: Boolean = true,
+    var isOnline: Boolean = false,
+    var lastSeen: Date? = null
 ) : Serializable
 
 data class NewUser(
@@ -52,7 +56,13 @@ data class ChatMessage(
     var location: Location? = null,
     var duration: Long? = null,
     var reactions: MutableMap<String, String> = mutableMapOf(),
-    val encryptionType: Int? = null
+    val encryptionType: Int? = null,
+    // ADICIONADO: Flags de controle
+    var notificationSent: Boolean = false,
+    var isEdited: Boolean = false,
+    var isPinned: Boolean = false,
+    var isForwarded: Boolean = false,
+    var priority: MessagePriority = MessagePriority.NORMAL
 )
 
 data class Location(
@@ -62,6 +72,16 @@ data class Location(
 
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
+
+enum class MessagePriority { LOW, NORMAL, HIGH, URGENT }
+
+enum class NotificationFlag { 
+    ENABLED, 
+    DISABLED, 
+    SILENT, 
+    VIBRATE_ONLY, 
+    SOUND_ONLY 
+}
 
 data class SettingsState(
     val userName: String = "",

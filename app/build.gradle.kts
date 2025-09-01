@@ -68,8 +68,8 @@ dependencies {
     //Datastore
     implementation(libs.androidx.datastore.preferences)
 
-    // Lottie animations
-    implementation(libs.lottie.compose)
+    // Lottie animations - REMOVIDO: Não usado mais
+    // implementation(libs.lottie.compose)
 
     // Google maps
     implementation(libs.play.services.location)
@@ -111,6 +111,10 @@ dependencies {
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
     }
     implementation(libs.firebase.messaging.ktx) {
+        exclude(group = "com.google.protobuf", module = "protobuf-javalite")
+    }
+    // ADICIONADO: Firebase Functions para notificações sem servidor
+    implementation("com.google.firebase:firebase-functions-ktx") {
         exclude(group = "com.google.protobuf", module = "protobuf-javalite")
     }
 

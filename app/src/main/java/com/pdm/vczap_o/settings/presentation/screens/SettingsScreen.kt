@@ -31,9 +31,11 @@ import androidx.navigation.NavController
 import com.pdm.vczap_o.core.state.CurrentUser
 import com.pdm.vczap_o.navigation.EditProfileDC
 import com.pdm.vczap_o.settings.presentation.components.AppearanceSection
+import com.pdm.vczap_o.settings.presentation.components.NotificationTestSection
 import com.pdm.vczap_o.settings.presentation.components.ProfileSection
 import com.pdm.vczap_o.settings.presentation.components.ResetConfirmationDialog
 import com.pdm.vczap_o.settings.presentation.viewmodels.SettingsViewModel
+import com.pdm.vczap_o.notifications.presentation.NotificationTestHelper
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -57,10 +59,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, navController: NavController) {
         topBar = {
             LargeFlexibleTopAppBar(
                 scrollBehavior = scrollBehavior,
-                title = { Text("Settings", modifier = Modifier.padding(top = 10.dp)) },
+                title = { Text("Configurações", modifier = Modifier.padding(top = 10.dp)) },
                 actions = {
                     IconButton(onClick = { showResetDialog = true }) {
-                        Icon(Icons.Default.RestartAlt, contentDescription = "Reset Settings")
+                        Icon(Icons.Default.RestartAlt, contentDescription = "Redefinir Configurações")
                     }
                 },
                 expandedHeight = 150.dp,
@@ -90,6 +92,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, navController: NavController) {
                 )
             }
             item { AppearanceSection(settingsState, viewModel) }
+            item { NotificationTestSection() }
 //            item { NotificationsSection(settingsState, viewModel) }
 //            item { PrivacySection(settingsState, viewModel) }
 //            item { AboutSection(settingsState, onNavigateToTerms, onContactSupport) }

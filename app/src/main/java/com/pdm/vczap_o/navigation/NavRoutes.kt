@@ -9,11 +9,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 object AuthScreen
 
-/**
- * Represents the first screen shown when the app starts.
- */
-@Serializable
-object LoadingScreen
+// Removido: LoadingScreen não é mais necessário
 
 /**
  * Represents the main screen of the app.
@@ -100,6 +96,8 @@ data class CameraXScreenDC(val roomId: String, val profileUrl: String, val devic
 @Serializable
 object CreateGroupScreen
 
+@Serializable
+object ContactsScreenDC
 /**
  * Represents the screen for viewing group information and members.
  * @param groupId The unique identifier of the group.

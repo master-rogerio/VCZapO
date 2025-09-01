@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -31,6 +32,7 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.pdm.vczap_o.MainActivity
 import com.pdm.vczap_o.auth.presentation.viewmodels.AuthViewModel
@@ -53,9 +55,9 @@ fun MainBottomNavScreen(
     initialPage: Int = 0,
 ) {
     val bottomNavItems = listOf(
-        BottomNavItem("home", Icons.AutoMirrored.Default.Chat, "Chats"),
-        BottomNavItem("profileScreen", Icons.Default.Person, "Profile"),
-        BottomNavItem("settings", Icons.Default.Settings, "Settings")
+        BottomNavItem("home", Icons.AutoMirrored.Default.Chat, "Conversas"),
+        BottomNavItem("profileScreen", Icons.Default.Person, "Perfil"),
+        BottomNavItem("settings", Icons.Default.Settings, "Configurações")
     )
 
     val pagerState = rememberPagerState(
@@ -88,7 +90,7 @@ fun MainBottomNavScreen(
         HorizontalPager(
             state = pagerState,
             modifier = Modifier
-                .weight(1f)
+                .weight(0.5f)
                 .background(MaterialTheme.colorScheme.background)
         ) { page ->
             when (page) {

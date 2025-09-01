@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhonelinkLock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.airbnb.lottie.compose.*
 import com.pdm.vczap_o.R
 import com.pdm.vczap_o.auth.data.BiometricAuthenticator
 import com.pdm.vczap_o.auth.data.BiometricAuthStatus
@@ -48,7 +49,7 @@ fun AuthScreen(
     navController: NavController, authViewModel: AuthViewModel
 ) {
     var isLogin by remember { mutableStateOf(true) }
-    val title = if (isLogin) "Login" else "Sign Up"
+    val title = if (isLogin) "Login" else "Cadastre-se"
     val authState by authViewModel.authState.collectAsState()
     val message by authViewModel.message.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -147,16 +148,14 @@ fun AuthScreen(
             verticalArrangement = Arrangement.Top,
             modifier = Modifier.fillMaxSize()
         ) {
-            val composition by rememberLottieComposition(
-                LottieCompositionSpec.RawRes(R.raw.chatmessagewithphone)
-            )
-            val progress by animateLottieCompositionAsState(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                speed = 1f
-            )
 
-            LottieAnimation(composition = composition, progress = { progress }, modifier = Modifier.size(350.dp).align(Alignment.CenterHorizontally))
+            Icon(
+                imageVector = Icons.Default.PhonelinkLock,
+                contentDescription = "Login",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(100.dp)
+                    .align(Alignment.CenterHorizontally)
+            )
 
             Spacer(modifier = Modifier.height((-30).dp))
 
@@ -249,11 +248,7 @@ import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.animateLottieCompositionAsState
-import com.airbnb.lottie.compose.rememberLottieComposition
+// Removido: Importações Lottie desnecessárias
 import com.pdm.vczap_o.R
 import com.pdm.vczap_o.auth.data.BiometricAuthenticator
 import com.pdm.vczap_o.auth.data.BiometricAuthStatus

@@ -96,22 +96,7 @@ fun MediaSelectionDialog(
                 }
                 
                 // ADICIONADO: Botão para Emojis & Stickers
-                OutlinedButton(
-                    onClick = {
-                        onEmojiStickerClick()
-                        onDismiss()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEmotions,
-                        contentDescription = "Selecionar Emoji ou Sticker",
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text("Emojis & Stickers")
-                }
+
                 // FIM ADICIONADO
                 
                 // Botão Cancelar

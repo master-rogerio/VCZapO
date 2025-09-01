@@ -1,5 +1,10 @@
 package com.pdm.vczap_o.chatRoom.presentation.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import com.pdm.vczap_o.chatRoom.presentation.components.PinnedMessageBar
+
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -12,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material.icons.Icons
@@ -101,14 +107,19 @@ fun ChatScreen(
     val showOverlay by chatViewModel.showRecordingOverlay.collectAsState()
     val fontSize by settingsViewModel.settingsState.collectAsState()
     val chatState by chatViewModel.chatState.collectAsState()
-    val messages by chatViewModel.messages.collectAsState()
     val connectivityStatus by connectivityViewModel.connectivityStatus.collectAsStateWithLifecycle()
-    
+
     // ADICIONADO: Estados para status e digitação
     val otherUserOnlineStatus by chatViewModel.otherUserOnlineStatus.collectAsState()
     val otherUserTypingStatus by chatViewModel.otherUserTypingStatus.collectAsState()
     val otherUserLastSeen by chatViewModel.otherUserLastSeen.collectAsState()
-    
+
+    val pinnedMessage by chatViewModel.pinnedMessage.collectAsState()
+
+    val messages by chatViewModel.filteredMessages.collectAsState() // ALTERADO para usar a lista filtrada
+    val searchText by chatViewModel.searchText.collectAsState()
+    val isSearchActive by chatViewModel.isSearchActive.collectAsState()
+
     // DEBUG TEMPORÁRIO - Logs de mudança de estado
     LaunchedEffect(otherUserOnlineStatus) {
         Log.d(tag, "=== CHATROOM: otherUserOnlineStatus mudou para: $otherUserOnlineStatus ===")
@@ -308,11 +319,7 @@ fun ChatScreen(
         previousMessageCount = messages.size
     }
 
-    var showEmptyMessagesAnimation by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(500)
-        showEmptyMessagesAnimation = true
-    }
+    var showEmptyMessagesAnimation by remember { mutableStateOf(true) }
 
     Scaffold(
         topBar = {
@@ -321,7 +328,8 @@ fun ChatScreen(
                 username = username,
                 profileUrl = profileUrl,
                 deviceToken = deviceToken,
-            )
+
+                )
             HeaderBar(
                 userData = userData,
                 name = decodedUsername,
@@ -331,7 +339,7 @@ fun ChatScreen(
                 navController = navController,
                 chatOptionsList = listOf(
                     DropMenu(
-                        text = "View Profile",
+                        text = "Ver Perfil",
                         onClick = {
                             val userJson = Gson().toJson(userData)
                             navController.navigate(OtherProfileScreenDC(userJson)) {
@@ -364,9 +372,14 @@ fun ChatScreen(
                 // ADICIONADO: Parâmetros de status e digitação
                 isUserOnline = otherUserOnlineStatus,
                 isUserTyping = otherUserTypingStatus,
-                lastSeen = otherUserLastSeen
+                lastSeen = otherUserLastSeen,
                 // FIM ADICIONADO
+                isSearchActive = isSearchActive,
+                searchText = searchText,
+                onSearchTextChange = chatViewModel::onSearchTextChange,
+                onToggleSearch = chatViewModel::toggleSearch,
             )
+
         },
         floatingActionButton = {
             if (showScrollToBottom) {
@@ -383,6 +396,21 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // ADICIONADO: A barra de mensagem fixada que aparece e desaparece suavemente
+            AnimatedVisibility(
+                visible = pinnedMessage != null,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                pinnedMessage?.let { message ->
+                    PinnedMessageBar(
+                        pinnedMessage = message,
+                        onUnpin = {
+                            chatViewModel.pinMessage(null) // Passar null para desafixar
+                        }
+                    )
+                }
+            }
             Box {
 //                Background Image
                 Image(
@@ -408,7 +436,7 @@ fun ChatScreen(
                     if (messages.isEmpty() && showEmptyMessagesAnimation) {
                         EmptyChatPlaceholder(
                             lottieAnimation = R.raw.chat,
-                            message = "Send a message to start a conversation",
+                            message = if (isSearchActive) "Nenhuma mensagem encontrada" else "Envie uma mensagem para iniciar a conversa",
                             speed = 1f,
                             modifier = Modifier
                                 .weight(1f)
@@ -540,5 +568,6 @@ fun ChatScreen(
                 }
             }
         }
-    }
+
+}
 }

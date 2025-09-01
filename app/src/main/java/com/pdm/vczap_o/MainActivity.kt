@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.getValue
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -37,7 +38,7 @@ class MainActivity : FragmentActivity() {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val settingsState by settingsViewModel.settingsState.collectAsStateWithLifecycle()
 
-            VCZapoTheme(themeMode = settingsState.themeMode) {
+            VCZapoTheme(isSystemInDarkTheme(), true) {
                 ChatAppNavigation()
             }
         }

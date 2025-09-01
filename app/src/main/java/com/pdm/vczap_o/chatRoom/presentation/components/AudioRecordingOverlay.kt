@@ -35,10 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
+// Removido: Importações Lottie desnecessárias
 import com.pdm.vczap_o.R
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -71,14 +68,10 @@ fun AudioRecordingOverlay(
             .width(300.dp)
             .padding(10.dp)
     ) {
-        // Recording animation
-        val composition by rememberLottieComposition(
-            LottieCompositionSpec.RawRes(R.raw.recording)
-        )
-
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
+        // Removido: Animação Lottie substituída por emoji
+        Text(
+            text = "🎤",
+            fontSize = 40.sp,
             modifier = Modifier.size(60.dp)
         )
 
