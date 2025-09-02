@@ -173,6 +173,21 @@ Para compilar e executar este projeto localmente, siga os passos abaixo:
     * O Gradle irá sincronizar e baixar todas as dependências necessárias.
     * Execute o aplicativo em um emulador ou dispositivo físico.
 
+
+## OU Instalando o nosso APK no seu smartphone
+
+Para instalar, siga os passos:
+
+1. **Baixe o APK**
+➡️ Disponível na página da [documentação de lançamento](https://github.com/master-rogerio/VCZapO/releases/tag/1.0.0).
+
+2. **Transfira para seu smartphone**
+*Pode ser via cabo USB, bluetooth, e-mail ou diretamente do navegador do seu smartphone Android.*
+
+3. **Instale o APK**
+*Se certifique de que a opção de instalar de fontes desconhecidas esteja ativada.*
+
+
 <br>
 
 [Retornar ao 🧾Índice](#-%C3%ADndice)
@@ -191,3 +206,12 @@ Para compilar e executar este projeto localmente, siga os passos abaixo:
 [Retornar ao 🧾Índice](#-%C3%ADndice)
 
 <br>
+
+<!--
+Desenvolvido por:
+-Danilo Plisske
+-Eduardo Antonio da Silva 
+-Luiz Fellipe Silva Lima
+-Ótavio Martins Gondim
+-Rogério Anastácio
+-->
