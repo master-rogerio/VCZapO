@@ -140,6 +140,9 @@ Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza u
 
 Veja o Video com o funcionamento do Aplicativo V.C. Zap-O:
 
+https://github.com/user-attachments/assets/2c7bc294-612b-4739-9f8d-354ce4c7b134
+
+
 
 [Retornar ao 🧾Índice](#-%C3%ADndice)
 
