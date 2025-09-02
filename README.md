@@ -128,7 +128,7 @@ Projetado para funcionar de forma eficiente online e offline, o VCZapO utiliza u
 -   **[Signal Protocol](https://signal.org/docs/):** Para implementação da criptografia de ponta-a-ponta.
 -   **[CameraX](https://developer.android.com/training/camerax):** Para funcionalidades de câmera dentro do aplicativo.
 -   **[Coil](https://coil-kt.github.io/coil/):** Para carregamento de imagens.
--   **[Lottie](https://airbnb.io/lottie/):** Para animações.
+
 
 <br>
 
